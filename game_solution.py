@@ -242,6 +242,10 @@ class App:
 
     def save_state(self):
         self.state = "paused"
+        for zombie in self.Zombies:
+                if not zombie.alive:
+                    self.Zombies.remove(zombie)
+                    self.cn.delete(zombie.zombie_sprite)  # Removes dead zombies from the list first
         self.game_data = {
             "player": {
                 "position": self.cn.coords(self.Player_Sprite),
@@ -275,6 +279,10 @@ class App:
             self.Zombies.clear()
 
             for zombie_data in game_data["zombies"]:
+                try:
+                    x, y= zombie_data["position"]
+                except:
+                    continue
                 zombie = NPC(self.cn, *zombie_data["position"], self.state,
                     self.npcwl, self.npcwr, self.npcrl, self.npcrr,
                     self.npcal, self.npcar, self.npcbl, self.npcbr,
@@ -283,6 +291,8 @@ class App:
                 zombie.alive = zombie_data["alive"]
                 zombie.changestate(zombie_data["state"])
                 self.Zombies.append(zombie)
+
+    
 
     def pause(self):
         # Pauses the game and displays an option menu
@@ -394,7 +404,7 @@ class App:
         #self.start_frame.pack_forget() might want to add this back when project gets too big 
 
 class NPC(App):
-    def __init__(self, cn, x, y, PlayerState, NPCWL, NPCWR, NPCRL, NPCRR, NPCAL, NPCAR, NPCBL, NPCBR, NPC1deadR, NPC1deadL, NPC2deadR, NPC2deadL):
+    def __init__(self, cn, x, y, PlayerState, NPCWL, NPCWR, NPCRL, NPCRR, NPCAL, NPCAR, NPCBL, NPCBR, NPC1deadR, NPC1deadL, NPC2deadR, NPC2deadL): #placeholder defaults to prevent errors for now for when mob 2 is to be added to the game
         self.cn = cn
 
         self.Pstate = PlayerState

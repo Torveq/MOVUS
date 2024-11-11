@@ -1,1 +1,1 @@
-{"player": {"position": [180.0, 305.0], "health": 100}, "zombies": [{"position": [153.0, 305.0], "health": 2, "alive": true, "state": "attacking_right"}], "game_state": "paused"}
+{"player": {"position": [220.0, 305.1], "health": 100}, "zombies": [{"position": [], "health": 0, "alive": false, "state": "dead"}], "game_state": "paused"}
