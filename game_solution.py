@@ -5,8 +5,9 @@ import time
 import random
 import math
 import json
+import tkinter.font
 #from tkinter import ttk
-
+'''Add shapes using actual shape functions circles for pfps in leaderboard for example and use text for death message or smth'''
 class App:
     def __init__(self, root):
         self.root = root
@@ -16,6 +17,7 @@ class App:
         self.root.bind("<Button-1>", self.debugging) # for debugging purposes
         self.root.wm_attributes('-transparentcolor', '#ab23ff')
         self.state_file = "game_state.json"
+        self.GameFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=16) # additional options weight, underline, overstrike, slant, etc
 
         # Preloads all frames of animation (NPCWR is an abbreviation for NPC Walk Right BR is bite right AR is attack right etc..)
         self.run_right = self.load_frames("Assets\PlayerRunRight")
@@ -24,6 +26,8 @@ class App:
         self.attack_left = self.load_frames("Assets\LeftAttack")
         self.run_attack_right = self.load_frames("Assets\RightRunAttack")
         self.run_attack_left = self.load_frames("Assets\LeftRunAttack")
+        self.dead_right = self.load_frames("Assets\PlayerDeadRight")
+        self.dead_left = self.load_frames("Assets\PlayerDeadLeft")
         self.npcwr = self.load_frames(r"Assets\NPC\Mob1WalkRight")
         self.npcwl = self.load_frames(r"Assets\NPC\Mob1WalkLeft")
         self.npcrr = self.load_frames(r"Assets\NPC\Mob2RunRight")
@@ -100,9 +104,14 @@ class App:
 
         self.Zombies = []
 
-        # Load and initialize player's health bar 
+        # Load and initialize player's health bar and score, last time he was hit/direction is set to default 0 to avoid errors on first time of running
+        self.Score = 0
+        self.ScoreTxt = self.cn.create_text(90, 20, text = f"Score: {self.Score}", font=self.GameFont)
         self.FullHealthBarImg = ImageTk.PhotoImage(Image.open(r"Assets\HealthBar\100.png").resize((250, 14)))
         self.HP = self.cn.create_image(400, self.H*0.03, image = self.FullHealthBarImg, anchor=NW)
+        self.health = 100
+        self.last_hit_time = 0
+        self.dx = 0
 
         # Detect keys pressed and released for appropriate action
         self.Action = False
@@ -236,6 +245,11 @@ class App:
         elif x >= self.W - 20 and self.dx > 0:
             self.dx = 0
 
+    def update_score(self):
+        self.Score += 1
+        #self.ScoreTxt.update()
+        self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}")
+
     def reset_sprite(self):
         # Resets the player sprite to the idle position
         self.cn.itemconfig(self.Player_Sprite, image=self.PlayerImg)
@@ -249,7 +263,7 @@ class App:
         self.game_data = {
             "player": {
                 "position": self.cn.coords(self.Player_Sprite),
-                "health": 100 #placeholder for actual health logic
+                "health": self.health #placeholder for actual health logic
             },
             "zombies": [
                 {
@@ -274,7 +288,7 @@ class App:
             player_data = game_data["player"]
             self.cn.coords(self.Player_Sprite, *player_data["position"])
 
-            for zombie in self.Zombies:
+            for zombie in self.Zombies: 
                 self.cn.delete(zombie.zombie_sprite)
             self.Zombies.clear()
 
@@ -337,33 +351,63 @@ class App:
     def Optionclicked(self, event):
         # Determines what button on the options menu has been pressed
         x, y = event.x, event.y
-        # X button dimensions x1=405 y1=56 x2=425 y2=77 then for restart, stats, settings, and quit
-        dimen = [[174,3,192,22],[14, 39, 178, 71], [17, 130, 178, 162], [15, 175, 178, 206], [17, 221, 177, 250]]
-        for d in dimen:
-            if (x>d[0] and x<d[2]) and (y>d[1] and y<d[3]):
-                b = dimen.index(d)
-                if b==0:
-                    self.resume()
-                elif b==1:
-                    self.resume()
-                elif b==2:
-                    pass
-                elif b==3:
-                    pass
-                else:
-                    self.start_menu()
+        if self.state == "paused":
+            # X button dimensions x1=405 y1=56 x2=425 y2=77 then for restart, stats, settings, and quit
+            dimen = [[174,3,192,22],[14, 39, 178, 71],[16, 85, 178, 116], [17, 130, 178, 162], [15, 175, 178, 206], [17, 221, 177, 250]]
+            for d in dimen:
+                if (x>d[0] and x<d[2]) and (y>d[1] and y<d[3]):
+                    b = dimen.index(d)
+                    if b==0:
+                        self.resume()
+                    elif b==1:
+                        self.resume()
+                    elif b==2:
+                        self.clear_frame()
+                        self.game()
+                        return
+                    elif b==3:
+                        pass
+                    elif b==4:
+                        pass
+                    else:
+                        self.start_menu()
+        elif self.state == "end":
+            dimen = [] #placeholder for dimensions of game over menu
+
+    def game_over(self):
+        for zombie in self.Zombies:
+            zombie.changestate("idle")
+        self.running_frames = self.dead_right if self.dx>0 else self.dead_left
+        self.animate() 
+        self.state = "end"
+        self.Pause_button.destroy()
+        self.OverButton = Button(image = self.OptionsImg, borderwidth=0, highlightthickness=0, background="#ab23ff")
+        self.OverButton.bind("<Button-1>", self.Optionclicked)
+        self.OverMenu = self.cn.create_window(self.W // 2, int(self.H * 0.5), window = self.OverButton, anchor = CENTER)
+        
 
     def spawn_mobs(self):
         # Spawn in zombies at random intervals and positions along the surface
         x = random.choice([random.randint(0,int(0.25*float(self.W))),random.randint(int(0.75*float(self.W)),self.W)])  # gives random coordinate from either first quarter or fourth quarter of the map, may have to adjust for allowing only integers using randint if cannot move sprites to float/decimal pixels
         y = int(self.H * 0.82)
-        zombie = NPC(self.cn, x, y, self.state, self.npcwl, self.npcwr, self.npcrl, self.npcrr, self.npcal, self.npcar, self.npcbl, self.npcbr, self.npc1deadr, self.npc1deadl, self.npc2deadr, self.npc2deadl)
+        zombie = NPC(self, self.cn, x, y, self.state, self.npcwl, self.npcwr, self.npcrl, self.npcrr, self.npcal, self.npcar, self.npcbl, self.npcbr, self.npc1deadr, self.npc1deadl, self.npc2deadr, self.npc2deadl)
         self.Zombies.append(zombie)
         zombie.animate()
 
         spawn_interval = 10000
         # Schedules next spawning mob based on milliseconds in the spawn_interval variable
         self.spawn_timer=self.root.after(spawn_interval, self.spawn_mobs)
+
+    def take_damage(self):
+        ctime = time.time()
+        if ctime - self.last_hit_time >= 2:  # 2 second cooldown for damaging the player
+            self.health -= 10
+            if self.health < 0:
+                self.game_over()
+                return # placeholder for game over menu mechanics/animation
+            self.newhealthimg = ImageTk.PhotoImage(Image.open(f"Assets\HealthBar\{self.health}.png").resize((250, 14)))  # if i dont attribute it to the class tkinter thing will do smth called garbage collecting idk why ask
+            self.cn.itemconfig(self.HP, image = self.newhealthimg)
+            self.last_hit_time = ctime
 
     def action_mobs(self):
         # Updates the mobs to move towards the player and if in range inflict damage
@@ -372,6 +416,7 @@ class App:
             if zombie.alive:
                 zombie.moveto(x)
                 if zombie.collisions(x):
+                    self.take_damage()
                     # Logic for attack will be put here
                     pass 
                 else:
@@ -404,9 +449,10 @@ class App:
         #self.start_frame.pack_forget() might want to add this back when project gets too big 
 
 class NPC(App):
-    def __init__(self, cn, x, y, PlayerState, NPCWL, NPCWR, NPCRL, NPCRR, NPCAL, NPCAR, NPCBL, NPCBR, NPC1deadR, NPC1deadL, NPC2deadR, NPC2deadL): #placeholder defaults to prevent errors for now for when mob 2 is to be added to the game
+    def __init__(self, app, cn, x, y, PlayerState, NPCWL, NPCWR, NPCRL, NPCRR, NPCAL, NPCAR, NPCBL, NPCBR, NPC1deadR, NPC1deadL, NPC2deadR, NPC2deadL): #placeholder defaults to prevent errors for now for when mob 2 is to be added to the game
+        
+        self.app =app
         self.cn = cn
-
         self.Pstate = PlayerState
         # Initialising animation frames for each possible action
         self.walk_left = NPCWL  #Two different zombies one that only walks(slower and attacks) and one that only runs(faster and bites)
@@ -429,8 +475,8 @@ class NPC(App):
         self.changestate("walking_right")
         self.frames = self.walk_right
         self.frame_index = 0
-        IdleZ1 = ImageTk.PhotoImage(Image.open(r"Assets\NPC\Mob1Idle.png"))
-        self.zombie_sprite = self.cn.create_image(x, y, image=IdleZ1, anchor = CENTER)
+        self.IdleZ1 = ImageTk.PhotoImage(Image.open(r"Assets\NPC\Mob1Idle.png"))
+        self.zombie_sprite = self.cn.create_image(x, y, image=self.IdleZ1, anchor = CENTER)
         self.alive = True
         self.mob_speed = 3
         self.health = 2
@@ -453,6 +499,8 @@ class NPC(App):
                 self.frames = self.attack_left
             elif new_state == "attacking_right":
                 self.frames = self.attack_right
+            elif new_state == "idle":
+                self.frames = self.IdleZ1  # might raise errors 
             elif new_state == "dead":
                 if self.dx > 0:
                     self.frames = self.dead1_right
@@ -507,6 +555,7 @@ class NPC(App):
         self.health -= damage
         if self.health <= 0:
             self.alive = False
+            self.app.update_score()
             self.changestate("dead")
             
 
