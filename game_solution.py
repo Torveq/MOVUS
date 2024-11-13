@@ -106,7 +106,7 @@ class App:
 
         # Load and initialize player's health bar and score, last time he was hit/direction is set to default 0 to avoid errors on first time of running
         self.Score = 0
-        self.ScoreTxt = self.cn.create_text(90, 20, text = f"Score: {self.Score}", font=self.GameFont)
+        self.ScoreTxt = self.cn.create_text(90, 20, text = f"Score: {self.Score}", font=self.GameFont)  #is this enough text for the rubric?
         self.FullHealthBarImg = ImageTk.PhotoImage(Image.open(r"Assets\HealthBar\100.png").resize((250, 14)))
         self.HP = self.cn.create_image(400, self.H*0.03, image = self.FullHealthBarImg, anchor=NW)
         self.health = 100
@@ -247,8 +247,8 @@ class App:
 
     def update_score(self):
         self.Score += 1
-        #self.ScoreTxt.update()
-        self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}")
+        #self.ScoreTxt.update() why doesn this work
+        self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}") #self.ScoreTxt.config doesnt work cause its on a canvas and not a standard widget
 
     def reset_sprite(self):
         # Resets the player sprite to the idle position
@@ -263,7 +263,8 @@ class App:
         self.game_data = {
             "player": {
                 "position": self.cn.coords(self.Player_Sprite),
-                "health": self.health #placeholder for actual health logic
+                "health": self.health, #placeholder for actual health logic
+                "score": self.Score
             },
             "zombies": [
                 {
@@ -297,7 +298,7 @@ class App:
                     x, y= zombie_data["position"]
                 except:
                     continue
-                zombie = NPC(self.cn, *zombie_data["position"], self.state,
+                zombie = NPC(self, self.cn, *zombie_data["position"], self.state,
                     self.npcwl, self.npcwr, self.npcrl, self.npcrr,
                     self.npcal, self.npcar, self.npcbl, self.npcbr,
                     self.npc1deadr, self.npc1deadl, self.npc2deadr, self.npc2deadl)
