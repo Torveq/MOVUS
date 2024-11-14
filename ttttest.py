@@ -9,7 +9,7 @@ GameFont = Font(
     family="CyberpunkCraftpixPixel",  # Corrected font family name
     size=42,
     underline=0,
-    overstrike=1
+    overstrike=0
 )
 
 mylab = Label(root, text="Is this working?", font=GameFont)
