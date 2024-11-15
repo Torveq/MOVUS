@@ -1,0 +1,1 @@
+{"player": {"name": "MOP", "position": [60.0, 270.70000000000005], "health": 70, "score": 0, "jumping": true, "airspeed": 1.3000000000000018}, "zombies": [{"position": [239.0, 305.0], "health": 2, "alive": true, "state": "walking_left"}, {"position": [177.0, 305.0], "health": 2, "alive": true, "state": "walking_left"}], "game_state": "paused"}

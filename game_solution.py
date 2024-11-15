@@ -14,11 +14,12 @@ class App:
         self.root.title("MOVUS")
         self.root.iconbitmap("Assets\Icon.ico")
         #self.root.resizable(True,True) doesnt work as intended, trying to upscale the entire thing to provide fullscreen option
+        self.state = "initialising"
+        self.saves_folder = "PlayerSaves"
         self.root.bind("<Button-1>", self.debugging) # for debugging purposes
         self.root.wm_attributes('-transparentcolor', '#ab23ff')
-        self.state_file = "game_state.json"
         self.GameFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=16) # additional options weight, underline, overstrike, slant, etc
-        self.InputFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=67) 
+        self.InputFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=67) # add other font incase character not accounted for in custom is used
         
         # Preloads all frames of animation (NPCWR is an abbreviation for NPC Walk Right BR is bite right AR is attack right etc..)
         self.run_right = self.load_frames("Assets\PlayerRunRight")
@@ -97,6 +98,11 @@ class App:
             self.username = self.username[:8]
 
     def game(self, event=None):
+        # Check if restarting the game to clear any saved file
+        if self.state == "restart":
+            filename = f"{self.username}_game_state.json"
+            if os.path.exists(filename):
+                os.remove(filename)
         # Reset Screen
         self.clear_frame()
         self.state = "game"
@@ -121,22 +127,26 @@ class App:
         self.PlayerImg = ImageTk.PhotoImage(Image.open("Assets\PlayerIdleR.png"))
         self.Player_Sprite = self.cn.create_image(self.W // 2, int(self.H * 0.82), image = self.PlayerImg, anchor = CENTER)
         self.JumpImg = ImageTk.PhotoImage(Image.open("Assets\PlayerJump\JumpRight.png").resize((80,80)))
+        self.HurtR = ImageTk.PhotoImage(Image.open("Assets\HurtRight.png").resize((80,80)))
+        self.HurtL = ImageTk.PhotoImage(Image.open("Assets\HurtLeft.png").resize((80,80)))
+        self.IdleR = ImageTk.PhotoImage(Image.open("Assets\PlayerIdleR.png"))
+        self.IdleL = ImageTk.PhotoImage(Image.open("Assets\PlayerIdleL.png"))
 
         self.Zombies = []
-
+        
         # Load and initialize player's health bar and score, last time he was hit/direction is set to default 0 to avoid errors on first time of running
         self.Score = 0
         self.ScoreTxt = self.cn.create_text(90, 20, text = f"Score: {self.Score}", font=self.GameFont)  #is this enough text for the rubric?
         self.FullHealthBarImg = ImageTk.PhotoImage(Image.open(r"Assets\HealthBar\100.png").resize((250, 14)))
         self.HP = self.cn.create_image(400, self.H*0.03, image = self.FullHealthBarImg, anchor=NW)
-        self.health = 10
+        self.health = 100
         self.last_hit_time = 0
         self.dx = 0
 
         # Detect keys pressed and released for appropriate action
         self.Action = False
         self.Running = False
-        self.Jumping = False
+        self.Jumping = False  # could be using a dictionary here instead
         self.Attacking = False
         self.RunAttacking = False
         
@@ -145,6 +155,10 @@ class App:
         [key for key in ["d", "a", "w"] if self.cn.bind(f"<KeyRelease-{key}>", self.deaction)]
         #self.cn.bind("<ButtonRelease-1>", self.deaction) later for when i implement attacking via left mouse button 
         
+        # Load previous save(if available) of the player with the same username
+        self.load_state()
+        self.Jump()
+
         # Start spawning mobs and queuing their animations
         self.spawn_mobs()
         self.action_mobs()
@@ -228,6 +242,9 @@ class App:
         pass
     
     def Jump(self):
+        if self.state=="loaded":
+            self.Jumping=True
+            self.state="game"
         if not self.Jumping or self.state != "game":
             return
         self.y_speed += 0.1 #gravity
@@ -279,19 +296,23 @@ class App:
 
     def reset_sprite(self):
         # Resets the player sprite to the idle position
-        self.cn.itemconfig(self.Player_Sprite, image=self.PlayerImg)
+        self.cn.itemconfig(self.Player_Sprite, image=self.IdleR if self.dx>0 else self.IdleL)
 
     def save_state(self):
         self.state = "paused"
+        self.state_file = os.path.join(self.saves_folder, f"{self.username}_game_state.json")
         for zombie in self.Zombies:
                 if not zombie.alive:
                     self.Zombies.remove(zombie)
                     self.cn.delete(zombie.zombie_sprite)  # Removes dead zombies from the list first
         self.game_data = {
             "player": {
+                "name": self.username,
                 "position": self.cn.coords(self.Player_Sprite),
-                "health": self.health, #placeholder for actual health logic
-                "score": self.Score
+                "health": self.health, 
+                "score": self.Score,
+                "jumping": self.Jumping,
+                "airspeed": self.y_speed if self.Jumping else 0
             },
             "zombies": [
                 {
@@ -309,12 +330,26 @@ class App:
             json.dump(self.game_data, file)
 
     def load_state(self):
+        self.state_file = os.path.join(self.saves_folder, f"{self.username}_game_state.json")
         if os.path.exists(self.state_file):
             with open(self.state_file, "r") as file:
                 game_data = json.load(file)
 
             player_data = game_data["player"]
+
             self.cn.coords(self.Player_Sprite, *player_data["position"])
+            # Load in saved HP bar
+            self.health = player_data["health"]
+            self.newhealthimg = ImageTk.PhotoImage(Image.open(f"Assets\HealthBar\{self.health}.png").resize((250, 14)))  
+            self.cn.itemconfig(self.HP, image = self.newhealthimg)
+            # Load in saved score
+            self.Score = player_data["score"]
+            self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}")
+            # To account for a save where player is in mid air 
+            if player_data["jumping"]:
+                self.state="loaded"
+                self.y_speed=player_data["airspeed"]
+                self.Jump()
 
             for zombie in self.Zombies: 
                 self.cn.delete(zombie.zombie_sprite)
@@ -333,8 +368,21 @@ class App:
                 zombie.alive = zombie_data["alive"]
                 zombie.changestate(zombie_data["state"])
                 self.Zombies.append(zombie)
+        else:
+            self.health=100
+            self.Score = 0
+            self.Zombies.clear()
 
-    
+    def load_midair(self):
+        self.y_speed += 0.1 #gravity
+        self.cn.move(self.Player_Sprite, 0, self.y_speed)
+        self.cn.update()
+        if self.cn.coords(self.Player_Sprite)[1] >= self.H * 0.82:
+            self.Jumping = False
+            self.y_speed = 0
+            self.reset_sprite()
+        else:
+            self.root.after(10, self.load_midair)
 
     def pause(self):
         # Pauses the game and displays an option menu
@@ -390,6 +438,7 @@ class App:
                     elif b==1:
                         self.resume()
                     elif b==2:
+                        self.state="restart"
                         self.clear_frame()
                         self.game()
                         return
@@ -410,6 +459,7 @@ class App:
                     elif b==1:
                         pass  # placeholder for leaderboard function
                     else:
+                        self.state="restart"
                         self.clear_frame()
                         self.game()
 
@@ -451,6 +501,8 @@ class App:
         ctime = time.time()
         if ctime - self.last_hit_time >= 2:  # 2 second cooldown for damaging the player
             self.health -= 10
+            self.cn.itemconfig(self.Player_Sprite, image = self.HurtR if self.dx>0 else self.HurtL)
+            self.root.after(200, self.reset_sprite)  # adds 200 ms delay before undisplaying the hurt sprite
             if self.health < 0 and self.state!="end":
                 self.health=0
                 self.game_over()
@@ -527,6 +579,7 @@ class NPC(App):
         self.changestate("walking_right")
         self.frames = self.walk_right
         self.frame_index = 0
+        self.dx = 0
         self.IdleZ1 = ImageTk.PhotoImage(Image.open(r"Assets\NPC\Mob1Idle.png"))
         self.zombie_sprite = self.cn.create_image(x, y, image=self.IdleZ1, anchor = CENTER)
         self.alive = True
