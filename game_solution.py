@@ -1,5 +1,7 @@
 from tkinter import *
 from PIL import Image, ImageTk
+from Leaderboard import *
+#from tkinter.tix import *
 import os
 import time
 import random
@@ -7,7 +9,10 @@ import math
 import json
 import tkinter.font
 #from tkinter import ttk
-'''Add shapes using actual shape functions circles for pfps in leaderboard for example and use text for death message or smth'''
+'''Add shapes using actual shape functions circles for pfps in leaderboard for example and use text for death message or smth
+   and make it so that when time to enter name auto focuses/user doesnt have to press text box and dont allow user to play or continue if no name entered or just make default
+   also try get the cursor to work
+   also fix git shit you need to commit'''
 class App:
     def __init__(self, root):
         self.root = root
@@ -15,13 +20,16 @@ class App:
         self.root.iconbitmap("Assets\Icon.ico")
         #self.root.resizable(True,True) doesnt work as intended, trying to upscale the entire thing to provide fullscreen option
         self.state = "initialising"
+        self.prev_state = None
         self.saves_folder = "PlayerSaves"
         self.root.bind("<Button-1>", self.debugging) # for debugging purposes
         self.root.wm_attributes('-transparentcolor', '#ab23ff')
         self.GameFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=16) # additional options weight, underline, overstrike, slant, etc
         self.InputFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=67) # add other font incase character not accounted for in custom is used
-        
+        self.LBFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=10)
+
         # Preloads all frames of animation (NPCWR is an abbreviation for NPC Walk Right BR is bite right AR is attack right etc..)
+        self.leaderboard_bg = self.load_frames("Assets\Leaderboard_BG")
         self.run_right = self.load_frames("Assets\PlayerRunRight")
         self.run_left = self.load_frames("Assets\PlayerRunLeft")
         self.attack_right = self.load_frames("Assets\RightAttack")
@@ -57,11 +65,15 @@ class App:
             if filename.endswith(".png"):
                 image = Image.open(os.path.join(folder, filename)).resize((80,80))
                 frames.append(ImageTk.PhotoImage(image))
+            elif filename.endswith(".jpg"):
+                image = Image.open(os.path.join(folder, filename))
+                frames.append(ImageTk.PhotoImage(image))
         return frames  #could use .self instead but to be more modular ig
 
     def start_menu(self):
         # Reset screen
         self.clear_frame()
+        self.state = "menu"
         # Create a frame for the start menu with dimesniosn equal to that of the image
         self.start_img = Image.open("Assets/MainMenue.png")
         self.W, self.H = self.start_img.size
@@ -78,6 +90,11 @@ class App:
         self.play_button = Button(self.start_frame, image=self.button_img, command=self.username_entry, bd=0, highlightthickness=0, padx=0, pady=0)
         #self.play_button.bind("<Key>", self.game) press any key to play
         self.play_button.place(relx=0.5,rely=0.715, anchor = CENTER)
+
+        # Leaderboard button
+        self.lb_button_img = ImageTk.PhotoImage(Image.open("Assets\LB_StartMenu.png"))
+        self.lb_button = Button(self.start_frame, image=self.lb_button_img, command=self.leaderboard, bd=0, highlightthickness=0, padx=0, pady=0)
+        self.lb_button.place(x=792, y=546, anchor=NW)
 
     def username_entry(self):
         self.play_button.config(command=self.game)
@@ -100,9 +117,10 @@ class App:
     def game(self, event=None):
         # Check if restarting the game to clear any saved file
         if self.state == "restart":
-            filename = f"{self.username}_game_state.json"
+            filename = f"PlayerSaves\{self.username}_game_state.json"
             if os.path.exists(filename):
                 os.remove(filename)
+
         # Reset Screen
         self.clear_frame()
         self.state = "game"
@@ -136,7 +154,7 @@ class App:
         
         # Load and initialize player's health bar and score, last time he was hit/direction is set to default 0 to avoid errors on first time of running
         self.Score = 0
-        self.ScoreTxt = self.cn.create_text(90, 20, text = f"Score: {self.Score}", font=self.GameFont)  #is this enough text for the rubric?
+        self.ScoreTxt = self.cn.create_text(90, 20, text = f"Score: {self.Score}", font=self.GameFont)
         self.FullHealthBarImg = ImageTk.PhotoImage(Image.open(r"Assets\HealthBar\100.png").resize((250, 14)))
         self.HP = self.cn.create_image(400, self.H*0.03, image = self.FullHealthBarImg, anchor=NW)
         self.health = 100
@@ -242,7 +260,7 @@ class App:
         pass
     
     def Jump(self):
-        if self.state=="loaded":
+        if self.state=="loaded":  # to account for the case where a save is loaded where the player is mid air
             self.Jumping=True
             self.state="game"
         if not self.Jumping or self.state != "game":
@@ -268,6 +286,12 @@ class App:
             else:
                 self.cn.itemconfig(self.Player_Sprite, image=self.running_frames[self.frame_index-1])
                 return
+        elif self.state=="lb":
+            self.frame_index = (self.frame_index +1) % len(self.running_frames)
+            self.lbcn.itemconfig(self.lbbg, image = self.running_frames[self.frame_index])
+            self.delay = 4000 if self.frame_index%2==0 else 100
+            self.root.after(self.delay, self.animate)
+
         if self.Action == False or self.state != "game":
             return
         self.bounds()
@@ -330,8 +354,8 @@ class App:
             json.dump(self.game_data, file)
 
     def load_state(self):
-        self.state_file = os.path.join(self.saves_folder, f"{self.username}_game_state.json")
-        if os.path.exists(self.state_file):
+        if os.path.exists(f"PlayerSaves\{self.username}_game_state.json"):
+            self.state_file = f"PlayerSaves\{self.username}_game_state.json"
             with open(self.state_file, "r") as file:
                 game_data = json.load(file)
 
@@ -369,20 +393,35 @@ class App:
                 zombie.changestate(zombie_data["state"])
                 self.Zombies.append(zombie)
         else:
+            self.state_file = os.path.join(self.saves_folder, f"{self.username}_game_state.json")
             self.health=100
             self.Score = 0
             self.Zombies.clear()
 
-    def load_midair(self):
-        self.y_speed += 0.1 #gravity
-        self.cn.move(self.Player_Sprite, 0, self.y_speed)
-        self.cn.update()
-        if self.cn.coords(self.Player_Sprite)[1] >= self.H * 0.82:
-            self.Jumping = False
-            self.y_speed = 0
-            self.reset_sprite()
-        else:
-            self.root.after(10, self.load_midair)
+    def leaderboard(self):
+        self.prev_state = self.state
+        self.state="lb"
+        self.running_frames = self.leaderboard_bg
+
+        # Make leaderboard initial frame background
+        self.lb_frame = Frame(root, width=600, height=300, bg="#ab23ff", bd=0)
+        self.lb_frame.place(x=0, y=0, relwidth=1, relheight=1, anchor=NW)
+        self.lbcn = Canvas(self.lb_frame, width=600, height=300, borderwidth=0, highlightthickness=0)
+        self.lbcn.pack()
+        self.lbbg=self.lbcn.create_image(0,0,image=self.running_frames[0], anchor = NW)
+        # X button to leave leaderboard
+        self.xb_img = ImageTk.PhotoImage(Image.open(r"Assets\x_button.png"))
+        self.x_lb = Button(self.lb_frame, image=self.xb_img, command=self.CloseLB, bd=0, highlightthickness=0, padx=0, pady=0)
+        xv = 536 if self.prev_state=="menu" else 422
+        self.x_lb.place(x=xv,y=16, anchor = NW)
+
+        display_leaderboard(self.lbcn)
+        display_scores(self.lbcn, self.GameFont, self.LBFont)
+        self.animate()
+
+    def CloseLB(self):
+        self.lb_frame.destroy()
+        self.state=self.prev_state
 
     def pause(self):
         # Pauses the game and displays an option menu
@@ -397,6 +436,11 @@ class App:
             self.OptionsButton.bind("<Button-1>", self.Optionclicked)
             self.OptionsMenu = self.cn.create_window(self.W // 2, int(self.H * 0.5), window = self.OptionsButton, anchor = CENTER)   
 
+            # trying to create another shape for the rubric but not working
+            #points = [40, 260, 165, 260, 150, 266, 50, 266]
+            #self.polygondesign = self.cn.create_polygon(points, outline = "blue", fill = "orange", width = 2)
+            #self.polygondesign.place(x=23, y=258, anchor = "NW")
+            
             # Pausing mob related stuff
             for zombie in self.Zombies:
                 zombie.pauseani()
@@ -443,7 +487,7 @@ class App:
                         self.game()
                         return
                     elif b==3:
-                        pass
+                        self.leaderboard()
                     elif b==4:
                         pass
                     else:
@@ -457,7 +501,7 @@ class App:
                     if b==0:
                         self.start_menu()
                     elif b==1:
-                        pass  # placeholder for leaderboard function
+                        self.leaderboard()
                     else:
                         self.state="restart"
                         self.clear_frame()
@@ -465,6 +509,7 @@ class App:
 
     def game_over(self):
         # Ends the game sets all zombies to idle position and stops them and plays death animation of player and loads game over screen
+        save_score(self.username, self.Score) # for leaderboard
         self.dmsgs = [f"{self.username} was eviscerated.", f"{self.username} was brutally dissected.", f"{self.username} had both kidneys stolen.", f"{self.username}'s body was donated to science.", f"{self.username} received a forced amputation.", f"{self.username} was voluntold to donate blood.", f"{self.username} had an unsuccessful lobotomy."]
         for zombie in self.Zombies:
             zombie.changestate("idle")

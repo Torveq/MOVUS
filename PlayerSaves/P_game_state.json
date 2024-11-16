@@ -1,1 +1,0 @@
-{"player": {"name": "P", "position": [340.0, 305.0], "health": 40, "score": 0, "jumping": false, "airspeed": 0}, "zombies": [{"position": [313.0, 305.0], "health": 2, "alive": true, "state": "attacking_right"}, {"position": [291.0, 305.0], "health": 2, "alive": true, "state": "walking_right"}], "game_state": "paused"}

@@ -1,1 +1,0 @@
-{"player": {"name": "MOL", "position": [490.0, 262.5], "health": 100, "score": 0, "jumping": true, "airspeed": 0.4000000000000016}, "zombies": [{"position": [258.0, 305.0], "health": 2, "alive": true, "state": "walking_right"}], "game_state": "paused"}
