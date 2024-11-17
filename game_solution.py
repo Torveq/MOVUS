@@ -11,7 +11,6 @@ import json
 import tkinter.font
 #from tkinter import ttk
 '''Add shapes using actual shape functions circles for pfps in leaderboard for example and use text for death message or smth
-   and make it so that when time to enter name auto focuses/user doesnt have to press text box and dont allow user to play or continue if no name entered or just make default
    also try get the cursor to work
    also add next to settings on start menu a how to play based on the craft pix ting just copy+paste'''
 class App:
@@ -97,10 +96,11 @@ class App:
         label = Label(self.start_frame, image=self.start_img)
         label.pack()
 
-        # Button to start the game
+        # Button to start the game and assume default username
+        self.username = "GUEST"
         self.button_img = ImageTk.PhotoImage(Image.open("Assets\PlayButton.png"))
         self.play_button = Button(self.start_frame, image=self.button_img, command=self.username_entry, bd=0, highlightthickness=0, padx=0, pady=0)
-        #self.play_button.bind("<Key>", self.game) press any key to play
+        #self.play_button.bind("<KeyPress>", self.game) #press any key to play
         self.play_button.place(relx=0.5,rely=0.715, anchor = CENTER)
 
         # Leaderboard button
@@ -123,15 +123,18 @@ class App:
         self.user_input= StringVar()
         self.NameInput = Entry(self.start_frame, textvariable=self.user_input, font=(self.InputFont), justify="center", bd=2, bg="#222a5c", width=8, fg="teal")
         self.NameInput.place(x=180, y=100)
+        self.NameInput.focus_set()
         self.NameInput.bind("<Return>", self.game)
         self.user_input.trace("w", self.name_limit)
 
     def name_limit(self, *args):
-        # Ensures that entered username doesnt exceed 10 characters and capitalises the username
+        # Ensures that entered username doesnt exceed 8 characters and capitalises the username
         self.username = self.user_input.get().upper()
         if len(self.username) > 8:
             self.user_input.set(self.username[:8])
             self.username = self.username[:8]
+        elif len(self.username) == 0:
+            self.username = "GUEST"
 
     def settings(self):
         self.prev_state = self.state
@@ -158,11 +161,7 @@ class App:
             i+=1
 
         # Display duplicate key warnings upon reopening settings
-        for action1, key1 in self.key_binds.items():
-            for action2, key2 in self.key_binds.items():
-                if action1 != action2 and key1 == key2:
-                    self.key_buttons[action1].config(fg="red")
-                    #self.key_buttons[action2].config(fg="red")
+        self.refresh_warnings()
 
         # X button to leave settings menu
         self.xb_img = ImageTk.PhotoImage(Image.open(r"Assets\x_button.png").resize((31,31)))
@@ -191,13 +190,10 @@ class App:
 
     def capture_key(self, event, action, button):
         key = event.keysym 
-        if self.warn_duplicate(action, key):
-            button.config(fg="red")
-        else:
-            button.config(fg="green")
         self.key_binds[action] = key  
-        self.save_settings()
-        button.config(text=key)  
+        button.config(text=key) 
+        self.refresh_warnings()
+        self.save_settings() 
         button.unbind("<KeyPress>")  
 
     def warn_duplicate(self, current_action, key):
@@ -205,6 +201,15 @@ class App:
             if current_action!=action and key==bound_key: 
                 return True
         return False
+    
+    def refresh_warnings(self):
+        for action, button in self.key_buttons.items():
+            button.config(fg="green")
+        for action1, key1 in self.key_binds.items():
+            for action2, key2 in self.key_binds.items():
+                if action1 != action2 and key1 == key2:
+                    self.key_buttons[action1].config(fg="red")
+                    self.key_buttons[action2].config(fg="red")
 
     def save_settings(self):
         # saves key binds so that they aren't lost when the game is closed, its own function rather than joined with save_state to make keybinds global to all users and not just one
@@ -233,7 +238,10 @@ class App:
         self.clear_frame()
         self.state = "game"
 
-        # Create game frame
+        # Load and initialise game background assets
+        self.WaveBreakImg = ImageTk.PhotoImage(Image.open("Assets\WaveBreak.jpg"))
+
+        # Create an initial game frame
         self.gamebg_1 = Image.open("Assets\Gamebg_1.png")
         self.W, self.H = self.gamebg_1.size
         self.game_frame = Frame(self.root, width=self.W, height=self.H)
@@ -243,7 +251,7 @@ class App:
         self.gamebg_1 = ImageTk.PhotoImage(self.gamebg_1)
         self.cn = Canvas(self.game_frame, width=self.W, height=self.H)
         self.cn.pack()
-        self.cn.create_image(0,0,image=self.gamebg_1, anchor = NW)
+        self.GameBG = self.cn.create_image(0,0,image=self.gamebg_1, anchor = NW)
 
         # Load pause option and game over menus and necessary button images
         self.OptionsImg = ImageTk.PhotoImage(Image.open("Assets\optionsmenu.png"))
@@ -260,8 +268,15 @@ class App:
 
         self.Zombies = []
         
-        # Load and initialize player's health bar and score, last time he was hit/direction is set to default 0 to avoid errors on first time of running
+        # Load and initialize variables, and last time he was hit/direction is set to default 0 to avoid errors on first time of running
+        self.konami_sequence = ["Up", "Up", "Down", "Down", "Left", "Right", "Left", "Right", "b", "a", "Return"]
+        self.key_sequence = []
+        self.WaveNum = 0
         self.Score = 0
+        self.scorepwave = 5
+        self.spawn_interval = 10000
+        self.zombie_num = 0
+        self.remaining_time = 0
         self.ScoreTxt = self.cn.create_text(90, 20, text = f"Score: {self.Score}", font=self.GameFont)
         self.FullHealthBarImg = ImageTk.PhotoImage(Image.open(r"Assets\HealthBar\100.png").resize((250, 14)))
         self.HP = self.cn.create_image(400, self.H*0.03, image = self.FullHealthBarImg, anchor=NW)
@@ -299,6 +314,8 @@ class App:
         if self.state!="game":
             return
         self.x, self.y = self.cn.coords(self.Player_Sprite)
+
+        self.check_cheat_code(event.keysym)
 
         if event.keysym == self.key_binds["right"] and self.x < self.W - 20:
             if not self.mob_collisions(dx=10):
@@ -381,7 +398,6 @@ class App:
         else:
             self.root.after(10, self.Jump)
 
-
     def animate(self):
         # Animate the player sprite during action
         if self.state=="end":
@@ -419,10 +435,51 @@ class App:
         elif x >= self.W - 20 and self.dx > 0:
             self.dx = 0
 
+    def check_cheat_code(self, key):
+        self.key_sequence.append(key)
+        if self.key_sequence[-len(self.konami_sequence):] == self.konami_sequence:
+            self.cheat_code()
+            self.key_sequence.clear() # or we can do self.key_sequence = [] to clear the list
+        elif len(self.key_sequence) > len(self.konami_sequence):
+            self.key_sequence.pop(0)
+
+    def cheat_code(self):
+        print("LETS GO")
+        pass
+
     def update_score(self):
         self.Score += 1
         #self.ScoreTxt.update() why doesn this work
         self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}") #self.ScoreTxt.config doesnt work cause its on a canvas and not a standard widget
+        if self.Score % self.scorepwave == 0 and self.Score != 0:
+            self.WaveNum += 1
+            self.root.after_cancel(self.spawn_timer)
+            self.root.after_cancel(self.mobact_timer)
+            self.Pause_button.destroy()
+            self.cn.itemconfig(self.GameBG, image=self.WaveBreakImg)
+            self.typewriter()
+            self.root.after(self.delta*len(self.WaveMsg), self.start_wave)
+            
+    def start_wave(self):
+        self.cn.delete(self.WaveTxt)
+        
+        self.Pause_button = Button(self.game_frame, image=self.PauseImg, command=self.pause, bd=0, highlightthickness=0)
+        self.cn.create_window(20, 20, window=self.Pause_button)
+        self.cn.itemconfig(self.GameBG, image=self.gamebg_1)
+        self.spawn_mobs()
+        self.action_mobs()
+
+    def typewriter(self):
+        self.WaveMsg = f"Wave {self.WaveNum} is approaching...                                                      "
+        self.WaveTxt = self.cn.create_text(self.W//2, self.H*0.35, text='', font=self.InputFont, fill="black")
+        self.delta = 300
+        delay = 0
+        for i in range(len(self.WaveMsg)+1):
+            s = self.WaveMsg[:i]
+            updatedtxt = lambda s=s: self.cn.itemconfig(self.WaveTxt, text=s)
+            self.cn.after(delay, updatedtxt)
+            delay += self.delta
+
 
     def reset_sprite(self):
         # Resets the player sprite to the idle position
@@ -490,7 +547,7 @@ class App:
                     x, y= zombie_data["position"]
                 except:
                     continue
-                zombie = NPC(self, self.cn, *zombie_data["position"], self.state,
+                zombie = NPC(self, self.cn, *zombie_data["position"], self.state, self.Score, self.WaveNum,
                     self.npcwl, self.npcwr, self.npcrl, self.npcrr,
                     self.npcal, self.npcar, self.npcbl, self.npcbr,
                     self.npc1deadr, self.npc1deadl, self.npc2deadr, self.npc2deadl)
@@ -547,10 +604,11 @@ class App:
             #self.polygondesign = self.cn.create_polygon(points, outline = "blue", fill = "orange", width = 2)
             #self.polygondesign.place(x=23, y=258, anchor = "NW")
             
-            # Pausing mob related stuff
+            # Pausing mob related stuff calculating remainig time for the next mob spawn
+            self.root.after_cancel(self.spawn_timer)
+            self.remaining_time = max(0, (self.spawn_interval/1000) - (time.time() - self.elapsed_spawn_time))
             for zombie in self.Zombies:
                 zombie.pauseani()
-            self.root.after_cancel(self.spawn_timer)
             self.root.after_cancel(self.mobact_timer)         
 
     def resume(self):
@@ -561,7 +619,7 @@ class App:
             self.cn.delete(self.OptionsMenu)
             self.cn.focus_set()
             self.cn.bind("<KeyPress>", self.action)
-            [key for key in ["d", "a", "w"] if self.cn.bind(f"<KeyRelease-{key}>", self.deaction)]
+            [key for key in [self.key_binds["attack"],self.key_binds["right"],self.key_binds["left"]] if self.cn.bind(f"<KeyRelease-{key}>", self.deaction)]
             # Recreate the pause button
             self.Pause_button = Button(self.game_frame, image=self.PauseImg, command=self.pause, bd=0, highlightthickness=0)
             self.cn.create_window(20, 20, window=self.Pause_button)
@@ -571,8 +629,13 @@ class App:
             # Resuming mob related stuff
             for zombie in self.Zombies:
                 zombie.resumeani()
-            self.spawn_mobs()
-            self.action_mobs()
+            print(self.zombie_num, self.scorepwave, "hey")
+            if self.zombie_num<self.scorepwave:
+                if self.remaining_time > 0:
+                    self.spawn_timer = self.root.after(int(self.remaining_time*1000), self.spawn_mobs)
+                else:
+                    self.spawn_mobs()
+                self.action_mobs()
 
     def Optionclicked(self, event):
         # Determines what button on the options menu has been pressed
@@ -637,16 +700,24 @@ class App:
         
 
     def spawn_mobs(self):
-        # Spawn in zombies at random intervals and positions along the surface
+        # Spawn in zombies at random intervals and positions along the surface unless zombie cap for wave is reached
+        
+        self.elapsed_spawn_time = time.time()
         x = random.choice([random.randint(0,int(0.25*float(self.W))),random.randint(int(0.75*float(self.W)),self.W)])  # gives random coordinate from either first quarter or fourth quarter of the map, may have to adjust for allowing only integers using randint if cannot move sprites to float/decimal pixels
         y = int(self.H * 0.82)
-        zombie = NPC(self, self.cn, x, y, self.state, self.npcwl, self.npcwr, self.npcrl, self.npcrr, self.npcal, self.npcar, self.npcbl, self.npcbr, self.npc1deadr, self.npc1deadl, self.npc2deadr, self.npc2deadl)
+        zombie = NPC(self, self.cn, x, y, self.state, self.Score, self.WaveNum, self.npcwl, self.npcwr, self.npcrl, self.npcrr, self.npcal, self.npcar, self.npcbl, self.npcbr, self.npc1deadr, self.npc1deadl, self.npc2deadr, self.npc2deadl)
         self.Zombies.append(zombie)
         zombie.animate()
+        zombie.NextWave()   # does modifications to the zombie based on the wave number
 
-        spawn_interval = 10000
+        self.zombie_num +=1
+
         # Schedules next spawning mob based on milliseconds in the spawn_interval variable
-        self.spawn_timer=self.root.after(spawn_interval, self.spawn_mobs)
+        self.spawn_timer=self.root.after(self.spawn_interval, self.spawn_mobs)
+
+        if self.zombie_num >= self.scorepwave:
+            self.zombie_num = 0
+            self.root.after_cancel(self.spawn_timer)
 
     def take_damage(self):
         ctime = time.time()
@@ -704,11 +775,14 @@ class App:
         #self.start_frame.pack_forget() might want to add this back when project gets too big 
 
 class NPC(App):
-    def __init__(self, app, cn, x, y, PlayerState, NPCWL, NPCWR, NPCRL, NPCRR, NPCAL, NPCAR, NPCBL, NPCBR, NPC1deadR, NPC1deadL, NPC2deadR, NPC2deadL): #placeholder defaults to prevent errors for now for when mob 2 is to be added to the game
+    def __init__(self, app, cn, x, y, PlayerState, PlayerScore, WaveNumb, NPCWL, NPCWR, NPCRL, NPCRR, NPCAL, NPCAR, NPCBL, NPCBR, NPC1deadR, NPC1deadL, NPC2deadR, NPC2deadL): #placeholder defaults to prevent errors for now for when mob 2 is to be added to the game
         
         self.app =app
         self.cn = cn
         self.Pstate = PlayerState
+        self.Pscore = PlayerScore
+        self.Wave = WaveNumb
+
         # Initialising animation frames for each possible action
         self.walk_left = NPCWL  #Two different zombies one that only walks(slower and attacks) and one that only runs(faster and bites)
         self.walk_right = NPCWR
@@ -735,7 +809,7 @@ class NPC(App):
         self.zombie_sprite = self.cn.create_image(x, y, image=self.IdleZ1, anchor = CENTER)
         self.alive = True
         self.mob_speed = 3
-        self.health = 2
+        self.health = 1
 
         self.animate()
 
@@ -763,7 +837,21 @@ class NPC(App):
                 else:   #doesnt really show animation if moving towards player from east to west 
                     self.frames = self.dead1_left
             self.frame_index = 0 
+    
+    def NextWave(self):
+        # To increase difficulty from wave to wave
+        if self.Wave != 0:
+            if self.Wave == 1:
+                self.health = 2
+            if self.Wave%5==0:
+                self.app.scorepwave += 5
+            if self.Wave%3==0:
+                self.health += 1
         
+        # every round changes
+        self.mob_speed += 1
+        self.app.spawn_interval -= 500 if self.app.spawn_interval>2000 else 0
+
     def animate(self):
         # Ques appropriate animation for the NPC
         if self.frames is None:

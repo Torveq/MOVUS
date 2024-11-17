@@ -55,7 +55,7 @@ def display_scores(frame, cn, title_font, elements_font):
     cn.create_text(300, 73, text = "LEADERBOARD", font=title_font, anchor=CENTER, fill="#69bbb6", tags="title")
     cn.create_rectangle(210, 82, 390, 84, fill="#5eada8", outline="#5eada8", tags = 'underline')
     cn.tag_raise("title", "underline")
-    for i in range(min(10,len(scores))):
+    for i in range(min(8,len(scores))):
         # Coordinates for the circle
         x1, y1 = 220, 100 + i * 20  # Adjust y-position for each row
         x2, y2 = x1 + 10, y1 + 10  # Circle size
@@ -78,8 +78,8 @@ def display_scores(frame, cn, title_font, elements_font):
         cn.create_text(x2 + 40, y1 + 5, text=scores[i][0], font=elements_font, anchor=W, fill="teal", tags=f"name_{i}")
         
         # Add the score in a third color with a tooltip to show the date
-        scoretxt = Label(frame, cn.create_text(x2 + 130, y1 + 5, text=scores[i][1], font=elements_font, anchor=W, fill="#9FAC8A", tags=f"score_{i}"))
-        Hovertip(scoretxt, "Displays leaderboard", hover_delay=1000)
+        cn.create_text(x2 + 130, y1 + 5, text=scores[i][1], font=elements_font, anchor=W, fill="#9FAC8A", tags=f"score_{i}")
+        #Hovertip(scoretxt, "Displays leaderboard", hover_delay=1000)
         #Tooltip(cn, text="HELLO", widget=cn.find_withtag(f"score_{i}")[0])  # Create tooltip for the score text to show date
 
         # Add the score text next to the circle
