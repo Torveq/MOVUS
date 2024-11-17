@@ -2,6 +2,7 @@ from tkinter import *
 #from tkinter.tix import *  # depricated module so arent maintained since python 3.6 so not reliable possibly
 #from tkinter.ttk import Tooltip
 from PIL import Image, ImageTk
+from idlelib.tooltip import Hovertip
 import os
 import random
   # add date next to the score maybe
@@ -48,7 +49,7 @@ def load_scores():
 
    #return sorted(scores, key=lambda x: x[1], reverse=True)
 
-def display_scores(cn, title_font, elements_font):
+def display_scores(frame, cn, title_font, elements_font):
     """Load scores and return them as a formatted string."""
     scores = load_scores()
     cn.create_text(300, 73, text = "LEADERBOARD", font=title_font, anchor=CENTER, fill="#69bbb6", tags="title")
@@ -77,7 +78,8 @@ def display_scores(cn, title_font, elements_font):
         cn.create_text(x2 + 40, y1 + 5, text=scores[i][0], font=elements_font, anchor=W, fill="teal", tags=f"name_{i}")
         
         # Add the score in a third color with a tooltip to show the date
-        cn.create_text(x2 + 130, y1 + 5, text=scores[i][1], font=elements_font, anchor=W, fill="#9FAC8A", tags=f"score_{i}")
+        scoretxt = Label(frame, cn.create_text(x2 + 130, y1 + 5, text=scores[i][1], font=elements_font, anchor=W, fill="#9FAC8A", tags=f"score_{i}"))
+        Hovertip(scoretxt, "Displays leaderboard", hover_delay=1000)
         #Tooltip(cn, text="HELLO", widget=cn.find_withtag(f"score_{i}")[0])  # Create tooltip for the score text to show date
 
         # Add the score text next to the circle

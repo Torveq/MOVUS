@@ -1,6 +1,7 @@
 from tkinter import *
 from PIL import Image, ImageTk
 from Leaderboard import *
+from idlelib.tooltip import Hovertip
 #from tkinter.tix import *
 import os
 import time
@@ -12,7 +13,7 @@ import tkinter.font
 '''Add shapes using actual shape functions circles for pfps in leaderboard for example and use text for death message or smth
    and make it so that when time to enter name auto focuses/user doesnt have to press text box and dont allow user to play or continue if no name entered or just make default
    also try get the cursor to work
-   also fix git shit you need to commit'''
+   also add next to settings on start menu a how to play based on the craft pix ting just copy+paste'''
 class App:
     def __init__(self, root):
         self.root = root
@@ -27,6 +28,14 @@ class App:
         self.GameFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=16) # additional options weight, underline, overstrike, slant, etc
         self.InputFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=67) # add other font incase character not accounted for in custom is used
         self.LBFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=10)
+
+        self.key_binds = {
+            "attack": "w",
+            "right": "d",
+            "left": "a",
+            "jump": "space",
+            "bosskey": "b"
+        }
 
         # Preloads all frames of animation (NPCWR is an abbreviation for NPC Walk Right BR is bite right AR is attack right etc..)
         self.leaderboard_bg = self.load_frames("Assets\Leaderboard_BG")
@@ -74,6 +83,8 @@ class App:
         # Reset screen
         self.clear_frame()
         self.state = "menu"
+        # Load previous settings(keybinds) if available
+        self.load_settings()
         # Create a frame for the start menu with dimesniosn equal to that of the image
         self.start_img = Image.open("Assets/MainMenue.png")
         self.W, self.H = self.start_img.size
@@ -94,7 +105,14 @@ class App:
         # Leaderboard button
         self.lb_button_img = ImageTk.PhotoImage(Image.open("Assets\LB_StartMenu.png"))
         self.lb_button = Button(self.start_frame, image=self.lb_button_img, command=self.leaderboard, bd=0, highlightthickness=0, padx=0, pady=0)
+        Hovertip(self.lb_button, "Displays leaderboard", hover_delay=1000) # 1000ms delay before showing tooltip
         self.lb_button.place(x=792, y=546, anchor=NW)
+
+        # Settings button
+        self.set_b_img = ImageTk.PhotoImage(Image.open("Assets\Settings_StartMenu.jpg"))
+        self.set_b = Button(self.start_frame, image=self.set_b_img, command=self.settings, bd=0, highlightthickness=0, padx=0, pady=0)
+        Hovertip(self.set_b, "Opens keybinds remapping", hover_delay=1000)
+        self.set_b.place(x=1, y=594, anchor=SW)
 
     def username_entry(self):
         self.play_button.config(command=self.game)
@@ -113,6 +131,89 @@ class App:
         if len(self.username) > 8:
             self.user_input.set(self.username[:8])
             self.username = self.username[:8]
+
+    def settings(self):
+        self.prev_state = self.state
+        self.state="settings"
+
+        # Make settings display menu
+        self.settingsImg = Image.open("Assets\SettingsMenu.png")
+        sW, sH = self.settingsImg.size
+        self.settings_frame = Frame(root, width=sW-3, height=sH-2, bg="black", bd=0)
+        self.settings_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
+        self.settingsImg = ImageTk.PhotoImage(self.settingsImg)
+        label = Label(self.settings_frame, image=self.settingsImg)
+        label.place(relx=0.5, rely=0.5, anchor=CENTER)
+
+        # Remapping keybinds
+        self.key_buttons = {}
+        i = 0
+        for action, key in self.key_binds.items():
+            KeyB = Button(self.settings_frame, text=key, command=lambda a=action: self.Remap(a), font=(self.GameFont), bd=2, bg="#222a5c", fg="green")
+            # we do a=action because of pythons closure behaviour in loops where lambda takes a refrence of any parameter at the end of the loop then runs 
+            KeyB.place(x=185, y= 74+i*68)
+            KeyB.lift()
+            self.key_buttons[action] = KeyB
+            i+=1
+
+
+        # X button to leave settings menu
+        self.xb_img = ImageTk.PhotoImage(Image.open(r"Assets\x_button.png").resize((31,31)))
+        self.x_lb = Button(self.settings_frame, image=self.xb_img, command=self.CloseSettings, bd=0, highlightthickness=0, padx=0, pady=0)
+        self.x_lb.place(x=260,y=9, anchor = NW)
+
+        # Dropdown menu to select boss key functionality
+        options = ["Boss-Key1:", "Boss-Key2:"]
+        clicked =StringVar()
+        clicked.set(options[0])
+        dropdown = OptionMenu(self.settings_frame, clicked, *options)
+        dropdown.config(font=self.GameFont, bg="#222a5c", fg="white", activeforeground="black", bd=0, border=0, highlightthickness=2, highlightbackground="black",indicatoron=0)
+        dropdown.place(x=28, y= 348, anchor=NW)
+        dropdown['menu'].config(font=("CyberpunkCraftpixPixel", 10), bg="#222a5c", fg="white", activeforeground="black", bd=0, border=0, activeborder=0)
+        # Checks which boss key has been selected
+        if clicked.get()=="Boss-Key2:":
+            self.BossKeyTransparent = True
+        else:
+            self.BossKeyTransparent = False
+
+
+    def Remap(self, action):
+        button = self.key_buttons[action]
+        button.focus_set()
+        button.bind("<KeyPress>", lambda event: self.capture_key(event, action, button))
+
+    def capture_key(self, event, action, button):
+        key = event.keysym 
+        if self.warn_duplicate(action, key):
+            button.config(fg="red")
+        else:
+            button.config(fg="green")
+        self.key_binds[action] = key  
+        self.save_settings()
+        button.config(text=key)  
+        button.unbind("<KeyPress>")  
+
+    def warn_duplicate(self, current_action, key):
+        for action, bound_key in self.key_binds.items():
+            if current_action!=action and key==bound_key: 
+                return True
+        return False
+
+    def save_settings(self):
+        # saves key binds so that they aren't lost when the game is closed, its own function rather than joined with save_state to make keybinds global to all users and not just one
+        with open("settings.json", "w") as file:
+            json.dump(self.key_binds, file)
+
+    def load_settings(self):
+        # loads keybinds from the json file
+        if os.path.exists("settings.json"):
+            with open("settings.json", "r") as file:
+                self.key_binds = json.load(file)
+
+    def CloseSettings(self):
+        self.settings_frame.destroy()
+        self.state=self.prev_state
+    
 
     def game(self, event=None):
         # Check if restarting the game to clear any saved file
@@ -170,7 +271,7 @@ class App:
         
         self.cn.focus_set()
         self.cn.bind("<KeyPress>", self.action)
-        [key for key in ["d", "a", "w"] if self.cn.bind(f"<KeyRelease-{key}>", self.deaction)]
+        [key for key in [self.key_binds["attack"],self.key_binds["right"],self.key_binds["left"]] if self.cn.bind(f"<KeyRelease-{key}>", self.deaction)]
         #self.cn.bind("<ButtonRelease-1>", self.deaction) later for when i implement attacking via left mouse button 
         
         # Load previous save(if available) of the player with the same username
@@ -192,7 +293,7 @@ class App:
             return
         self.x, self.y = self.cn.coords(self.Player_Sprite)
 
-        if event.char == "d" and self.x < self.W - 20:
+        if event.keysym == self.key_binds["right"] and self.x < self.W - 20:
             if not self.mob_collisions(dx=10):
                 self.running_frames = self.run_right
                 self.dx = 10
@@ -203,7 +304,7 @@ class App:
                     self.Action = True
                     self.animate()
 
-        elif event.char == "a" and self.x > 20:
+        elif event.keysym == self.key_binds["left"] and self.x > 20:
             if not self.mob_collisions(dx=-10):
                 self.running_frames = self.run_left
                 self.dx = -10
@@ -214,13 +315,13 @@ class App:
                     self.Action = True
                     self.animate()
 
-        elif (event.keysym == "space" and not self.Jumping) and (self.x <= (self.W - 10) and self.x >= 20): #right boundary shorter than left due to extra leading transparent pixels when sprite facing east
+        elif (event.keysym == self.key_binds["jump"] and not self.Jumping) and (self.x <= (self.W - 10) and self.x >= 20): #right boundary shorter than left due to extra leading transparent pixels when sprite facing east
             self.Jumping = True
             self.y_speed = -3
             self.cn.itemconfig(self.Player_Sprite, image = self.JumpImg) 
             self.Jump()
         
-        elif event.char == "w":   #unexpected occurs when player holding down attack and then tries to run in either direction
+        elif event.keysym == self.key_binds["attack"]:   #unexpected occurs when player holding down attack and then tries to run in either direction
             if self.Jumping or self.Attacking or self.RunAttacking:
                 return  # Prevents attacking if the player is jumping or already attacking
             attack_range = 50
@@ -247,8 +348,6 @@ class App:
                 closest_mob.take_damage(1)  
             
             self.animate()
-            
-
 
     def deaction(self, event):
         # Detects when a key is released and resets to original states
@@ -416,7 +515,7 @@ class App:
         self.x_lb.place(x=xv,y=16, anchor = NW)
 
         display_leaderboard(self.lbcn)
-        display_scores(self.lbcn, self.GameFont, self.LBFont)
+        display_scores(self.lb_frame, self.lbcn, self.GameFont, self.LBFont)
         self.animate()
 
     def CloseLB(self):
@@ -489,7 +588,7 @@ class App:
                     elif b==3:
                         self.leaderboard()
                     elif b==4:
-                        pass
+                        self.settings()
                     else:
                         self.start_menu()
         elif self.state == "end":
@@ -510,7 +609,7 @@ class App:
     def game_over(self):
         # Ends the game sets all zombies to idle position and stops them and plays death animation of player and loads game over screen
         save_score(self.username, self.Score) # for leaderboard
-        self.dmsgs = [f"{self.username} was eviscerated.", f"{self.username} was brutally dissected.", f"{self.username} had both kidneys stolen.", f"{self.username}'s body was donated to science.", f"{self.username} received a forced amputation.", f"{self.username} was voluntold to donate blood.", f"{self.username} had an unsuccessful lobotomy."]
+        self.dmsgs = [f"{self.username} was eviscerated.", f"{self.username} was brutally dissected.", f"{self.username} had both kidneys stolen.", f"{self.username}'s body was donated to science.", f"{self.username} received a forced amputation.", f"{self.username} was voluntold to donate blood.", f"{self.username} suffered from a tragic lobotomy."]
         for zombie in self.Zombies:
             zombie.changestate("idle")
         self.running_frames = self.dead_right if self.dx>0 else self.dead_left
@@ -713,6 +812,7 @@ class NPC(App):
             
 
         
+
 
 if __name__ == "__main__":
     root = Tk()
