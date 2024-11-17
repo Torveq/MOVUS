@@ -22,6 +22,7 @@ class App:
         #self.root.resizable(True,True) doesnt work as intended, trying to upscale the entire thing to provide fullscreen option
         self.state = "initialising"
         self.prev_state = None
+        self.BossKeyTransparent = False
         self.saves_folder = "PlayerSaves"
         self.root.bind("<Button-1>", self.debugging) # for debugging purposes
         self.root.wm_attributes('-transparentcolor', '#ab23ff')
@@ -156,6 +157,12 @@ class App:
             self.key_buttons[action] = KeyB
             i+=1
 
+        # Display duplicate key warnings upon reopening settings
+        for action1, key1 in self.key_binds.items():
+            for action2, key2 in self.key_binds.items():
+                if action1 != action2 and key1 == key2:
+                    self.key_buttons[action1].config(fg="red")
+                    #self.key_buttons[action2].config(fg="red")
 
         # X button to leave settings menu
         self.xb_img = ImageTk.PhotoImage(Image.open(r"Assets\x_button.png").resize((31,31)))
@@ -165,7 +172,7 @@ class App:
         # Dropdown menu to select boss key functionality
         options = ["Boss-Key1:", "Boss-Key2:"]
         clicked =StringVar()
-        clicked.set(options[0])
+        clicked.set(options[0 if self.BossKeyTransparent==False else 1])
         dropdown = OptionMenu(self.settings_frame, clicked, *options)
         dropdown.config(font=self.GameFont, bg="#222a5c", fg="white", activeforeground="black", bd=0, border=0, highlightthickness=2, highlightbackground="black",indicatoron=0)
         dropdown.place(x=28, y= 348, anchor=NW)
