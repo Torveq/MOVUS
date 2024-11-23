@@ -1,0 +1,1 @@
+{"player": {"name": "LAOD", "position": [250.0, 305.1], "health": 50, "score": 7, "jumping": false, "airspeed": 0}, "zombies": [{"position": [], "health": 0, "alive": false, "state": "dead"}, {"position": [], "health": 0, "alive": false, "state": "dead"}], "game_state": "paused"}

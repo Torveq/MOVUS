@@ -10,7 +10,7 @@ import math
 import json
 import tkinter.font
 #from tkinter import ttk
-'''Add shapes using actual shape functions circles for pfps in leaderboard for example and use text for death message or smth
+'''
    also try get the cursor to work
    also add next to settings on start menu a how to play based on the craft pix ting just copy+paste'''
 class App:
@@ -21,7 +21,7 @@ class App:
         #self.root.resizable(True,True) doesnt work as intended, trying to upscale the entire thing to provide fullscreen option
         self.state = "initialising"
         self.prev_state = None
-        self.BossKeyTransparent = False
+        self.BossKeyTransparent = 0
         self.saves_folder = "PlayerSaves"
         self.root.bind("<Button-1>", self.debugging) # for debugging purposes
         self.root.wm_attributes('-transparentcolor', '#ab23ff')
@@ -34,8 +34,11 @@ class App:
             "right": "d",
             "left": "a",
             "jump": "space",
-            "bosskey": "b"
+            "bosskey": "b",
+            "bosstype": 0
         }
+
+        #self.root.bind("<Configure>", self.resize)
 
         # Preloads all frames of animation (NPCWR is an abbreviation for NPC Walk Right BR is bite right AR is attack right etc..)
         self.leaderboard_bg = self.load_frames("Assets\Leaderboard_BG")
@@ -65,6 +68,9 @@ class App:
     def debugging(self, event):
         # As the name suggests
         print(f"Clicked at ({event.x}, {event.y})")
+
+    def resize(self):
+        pass
 
     def load_frames(self, folder):
         # Loads all frames for any one sprite animation
@@ -100,7 +106,7 @@ class App:
         self.username = "GUEST"
         self.button_img = ImageTk.PhotoImage(Image.open("Assets\PlayButton.png"))
         self.play_button = Button(self.start_frame, image=self.button_img, command=self.username_entry, bd=0, highlightthickness=0, padx=0, pady=0)
-        #self.play_button.bind("<KeyPress>", self.game) #press any key to play
+        self.play_button.bind("<Return>", lambda event: self.play_button.invoke())  # Bind Enter key to play button
         self.play_button.place(relx=0.5,rely=0.715, anchor = CENTER)
 
         # Leaderboard button
@@ -166,22 +172,27 @@ class App:
         # X button to leave settings menu
         self.xb_img = ImageTk.PhotoImage(Image.open(r"Assets\x_button.png").resize((31,31)))
         self.x_lb = Button(self.settings_frame, image=self.xb_img, command=self.CloseSettings, bd=0, highlightthickness=0, padx=0, pady=0)
+        self.x_lb.bind("<Escape>", lambda event: self.x_lb.invoke())  # Bind Escape key to close settings button
         self.x_lb.place(x=260,y=9, anchor = NW)
 
         # Dropdown menu to select boss key functionality
         options = ["Boss-Key1:", "Boss-Key2:"]
-        clicked =StringVar()
-        clicked.set(options[0 if self.BossKeyTransparent==False else 1])
-        dropdown = OptionMenu(self.settings_frame, clicked, *options)
+        self.clicked =StringVar()
+        self.clicked.set(options[0 if self.BossKeyTransparent==0 else 1])
+        dropdown = OptionMenu(self.settings_frame, self.clicked, *options)
         dropdown.config(font=self.GameFont, bg="#222a5c", fg="white", activeforeground="black", bd=0, border=0, highlightthickness=2, highlightbackground="black",indicatoron=0)
         dropdown.place(x=28, y= 348, anchor=NW)
         dropdown['menu'].config(font=("CyberpunkCraftpixPixel", 10), bg="#222a5c", fg="white", activeforeground="black", bd=0, border=0, activeborder=0)
-        # Checks which boss key has been selected
-        if clicked.get()=="Boss-Key2:":
-            self.BossKeyTransparent = True
-        else:
-            self.BossKeyTransparent = False
+        self.clicked.trace_add("write", self.UpdateBossKey)
 
+    def UpdateBossKey(self, *args):
+        # Nested method checks which boss key has been selected
+        if self.clicked.get()=="Boss-Key2:":
+            self.BossKeyTransparent = 1
+            self.save_settings()
+        else:
+            self.BossKeyTransparent = 0
+            self.save_settings()
 
     def Remap(self, action):
         button = self.key_buttons[action]
@@ -214,6 +225,8 @@ class App:
     def save_settings(self):
         # saves key binds so that they aren't lost when the game is closed, its own function rather than joined with save_state to make keybinds global to all users and not just one
         with open("settings.json", "w") as file:
+            self.key_binds["bosstype"] = self.BossKeyTransparent
+            print(self.BossKeyTransparent)
             json.dump(self.key_binds, file)
 
     def load_settings(self):
@@ -221,6 +234,9 @@ class App:
         if os.path.exists("settings.json"):
             with open("settings.json", "r") as file:
                 self.key_binds = json.load(file)
+                self.BossKeyTransparent = self.key_binds.get("bosstype", 0)
+                print(self.BossKeyTransparent)
+                self.key_binds.pop("bosstype")
 
     def CloseSettings(self):
         self.settings_frame.destroy()
@@ -290,6 +306,8 @@ class App:
         self.Jumping = False  # could be using a dictionary here instead
         self.Attacking = False
         self.RunAttacking = False
+        self.BossKActive = False
+        self.Transparent = False
         
         self.cn.focus_set()
         self.cn.bind("<KeyPress>", self.action)
@@ -307,6 +325,7 @@ class App:
         # Adding a Pause button
         self.PauseImg = ImageTk.PhotoImage(Image.open("Assets\Pause_Button.png").convert("RGBA").resize((25,25)))
         self.Pause_button = Button(self.game_frame, image=self.PauseImg, command=self.pause, bd=0, highlightthickness=0, padx=0, pady=0)
+        self.Pause_button.bind("<Escape>", lambda event: self.Pause_button.invoke())  # Bind Escape key to pause button
         self.cn.create_window(20,20, window = self.Pause_button)
 
     def action(self, event):
@@ -348,30 +367,10 @@ class App:
         elif event.keysym == self.key_binds["attack"]:   #unexpected occurs when player holding down attack and then tries to run in either direction
             if self.Jumping or self.Attacking or self.RunAttacking:
                 return  # Prevents attacking if the player is jumping or already attacking
-            attack_range = 50
-            closest_mob = None
-            min_distance = float('inf')  # To track only the closest mob to the player
-            if self.Running and not self.RunAttacking:
-                self.RunAttacking = True
-                self.Action = True
-                self.running_frames = self.run_attack_right if self.dx>0 else self.run_attack_left
-            elif not self.Attacking:
-                self.Attacking = True
-                self.Action = True
-                self.running_frames = self.attack_right if self.dx>0 else self.attack_left
-            for zombie in self.Zombies:
-                if zombie.alive:
-                    zx, zy = self.cn.coords(zombie.zombie_sprite)
-                    distance = math.sqrt((self.x -zx)**2 + (self.y -zy)**2)
-                    if abs(self.x - zx) < attack_range and distance < min_distance:
-                        closest_mob = zombie
-                        min_distance = distance
-                else:
-                    continue
-            if closest_mob:
-                closest_mob.take_damage(1)  
-            
-            self.animate()
+            self.Attack()
+
+        elif event.keysym == self.key_binds["bosskey"]:
+            self.BossKey()
 
     def deaction(self, event):
         # Detects when a key is released and resets to original states
@@ -382,6 +381,32 @@ class App:
         self.reset_sprite()
         pass
     
+    def Attack(self):
+        attack_range = 50
+        closest_mob = None
+        min_distance = float('inf')  # To track only the closest mob to the player
+        if self.Running and not self.RunAttacking:
+            self.RunAttacking = True
+            self.Action = True
+            self.running_frames = self.run_attack_right if self.dx>0 else self.run_attack_left
+        elif not self.Attacking:
+            self.Attacking = True
+            self.Action = True
+            self.running_frames = self.attack_right if self.dx>0 else self.attack_left
+        for zombie in self.Zombies:
+            if zombie.alive:
+                zx, zy = self.cn.coords(zombie.zombie_sprite)
+                distance = math.sqrt((self.x -zx)**2 + (self.y -zy)**2)
+                if abs(self.x - zx) < attack_range and distance < min_distance:
+                    closest_mob = zombie
+                    min_distance = distance
+            else:
+                continue
+        if closest_mob:
+            closest_mob.take_damage(1)  
+            
+        self.animate()
+
     def Jump(self):
         if self.state=="loaded":  # to account for the case where a save is loaded where the player is mid air
             self.Jumping=True
@@ -397,6 +422,29 @@ class App:
             self.reset_sprite()
         else:
             self.root.after(10, self.Jump)
+
+    def BossKey(self):
+        if self.BossKActive:
+            if self.Transparent==False:
+                self.TranspWin.destroy()
+            else:
+                self.cn.delete(self.TransRec)
+                root.overrideredirect(False) # rebirth menu title bar and basically the border
+                self.Transparent=False
+            self.BossKActive = False
+            return
+        elif self.BossKeyTransparent:
+            self.Transparent=True
+            self.TransRec=self.cn.create_rectangle(0, 0, self.W+5, self.H+5, fill="#ab23ff", outline="#ab23ff")
+            root.overrideredirect(True)  # remove menu title bar and basically the border
+        else:
+            self.TranspWin = Toplevel()
+            self.TranspWin.attributes("-fullscreen", True)
+            self.BossKImg = ImageTk.PhotoImage(Image.open("Assets\BossKeyImg.png").resize((self.TranspWin.winfo_screenwidth(), self.TranspWin.winfo_screenheight())))
+            self.BossKLabel = Label(self.TranspWin, image=self.BossKImg)
+            self.BossKLabel.pack(fill=BOTH, expand=True)
+
+        self.BossKActive = True
 
     def animate(self):
         # Animate the player sprite during action
@@ -590,9 +638,12 @@ class App:
         # Pauses the game and displays an option menu
         if self.state == "game":
             self.save_state()
+            
+            if not self.state == "boss":
+                self.cn.unbind("<KeyPress>")
+                self.cn.unbind("<KeyRelease>") #need to fix this as still detected when paused
+
             self.state = "paused"
-            self.cn.unbind("<KeyPress>")
-            self.cn.unbind("<KeyRelease>") #need to fix this as still detected when paused
             #[key for key in ["d", "a", "w"] if self.bg1_canvas.unbind(f"<KeyRelease-{key}>", self.deaction)]
             self.Pause_button.destroy()
             self.OptionsButton = Button(image = self.OptionsImg, borderwidth=0, highlightthickness=0, background="#ab23ff")
@@ -905,8 +956,6 @@ class NPC(App):
             self.app.update_score()
             self.changestate("dead")
             
-
-        
 
 
 if __name__ == "__main__":
