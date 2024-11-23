@@ -299,6 +299,7 @@ class App:
         self.health = 100
         self.last_hit_time = 0
         self.dx = 0
+        self.grav=0.1
 
         # Detect keys pressed and released for appropriate action
         self.Action = False
@@ -308,6 +309,7 @@ class App:
         self.RunAttacking = False
         self.BossKActive = False
         self.Transparent = False
+        self.cheaton = False
         
         self.cn.focus_set()
         self.cn.bind("<KeyPress>", self.action)
@@ -413,7 +415,7 @@ class App:
             self.state="game"
         if not self.Jumping or self.state != "game":
             return
-        self.y_speed += 0.1 #gravity
+        self.y_speed += self.grav
         self.cn.move(self.Player_Sprite, 0, self.y_speed)
         self.cn.update()
         if self.cn.coords(self.Player_Sprite)[1] >= self.H * 0.82:
@@ -492,8 +494,13 @@ class App:
             self.key_sequence.pop(0)
 
     def cheat_code(self):
-        print("LETS GO")
-        pass
+        self.cheaton = True  # a vriable that i may use in the future to imoplement some more complex cheat code functionalities
+        if self.grav >=0.03:
+            self.grav -= 0.01
+        if self.health < 100:
+            self.health += 10
+            self.newhealthimg = ImageTk.PhotoImage(Image.open(f"Assets\HealthBar\{self.health}.png").resize((250, 14)))
+            self.cn.itemconfig(self.HP, image = self.newhealthimg)
 
     def update_score(self):
         self.Score += 1
@@ -787,11 +794,11 @@ class App:
 
     def action_mobs(self):
         # Updates the mobs to move towards the player and if in range inflict damage
-        x = self.cn.coords(self.Player_Sprite)[0]
+        x,y = self.cn.coords(self.Player_Sprite)
         for zombie in self.Zombies:
             if zombie.alive:
                 zombie.moveto(x)
-                if zombie.collisions(x) and self.state!="end":
+                if zombie.collisions(x,y) and self.state!="end":
                     self.take_damage()
                 elif self.state=="end":
                     zombie.changestate("idle")
@@ -938,10 +945,10 @@ class NPC(App):
             step = min(self.mob_speed, self.dx) if self.dx>0 else max(-self.mob_speed, self.dx)
             self.cn.move(self.zombie_sprite, step, 0)
 
-    def collisions(self, playerx, attack_range = 30):
+    def collisions(self, playerx, playery, attack_range = 30):
         # Checks if mob is close enough to inflict damage unto the player
-        x = self.cn.coords(self.zombie_sprite)[0]
-        if abs(playerx - x) < attack_range:
+        x, y = self.cn.coords(self.zombie_sprite)
+        if abs(playerx - x) < attack_range and abs(playery - y) < attack_range - 10:
             if not self.state.startswith("attacking"):
                 self.changestate(f"attacking_{'right' if self.dx>0 else 'left'}")
             return True
