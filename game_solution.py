@@ -9,8 +9,9 @@ import random
 import math
 import json
 import tkinter.font
+import webbrowser
 #from tkinter import ttk
-'''
+'''try get window to resize and everything else does/scale along with it
    also try get the cursor to work
    also add next to settings on start menu a how to play based on the craft pix ting just copy+paste'''
 class App:
@@ -121,6 +122,19 @@ class App:
         Hovertip(self.set_b, "Opens keybinds remapping", hover_delay=1000)
         self.set_b.place(x=1, y=594, anchor=SW)
 
+        # Small "How to Play" button
+        self.htp_b_img = ImageTk.PhotoImage(Image.open("Assets\HowToPlayButton.jpg"))
+        self.htp_b = Button(self.start_frame, image=self.htp_b_img, command=self.tipscreen, bd=0, highlightthickness=0, padx=0, pady=0)
+        Hovertip(self.htp_b, "How to play", hover_delay=1000)
+        self.htp_b.place(x=49, y=594, anchor=SW)
+
+        # Socials button
+        url = "https://www.instagram.com/torsoq/profilecard/?igsh=NW9oY3Bjbm4xdW4="
+        self.soc_b_img = ImageTk.PhotoImage(Image.open("Assets\SocialsButton.png"))
+        self.soc_b = Button(self.start_frame, image=self.soc_b_img, command=lambda: webbrowser.open(url), bd=0, highlightthickness=0, padx=0, pady=0)
+        Hovertip(self.soc_b, "Open socials webpage on default browser", hover_delay=1000)
+        self.soc_b.place(x=840, y=590, anchor=SW)
+
     def username_entry(self):
         self.play_button.config(command=self.game)
         self.NameImg=ImageTk.PhotoImage(Image.open(r"Assets\NameEntry.png").resize((643,74)))
@@ -154,7 +168,6 @@ class App:
         self.settingsImg = ImageTk.PhotoImage(self.settingsImg)
         label = Label(self.settings_frame, image=self.settingsImg)
         label.place(relx=0.5, rely=0.5, anchor=CENTER)
-
         # Remapping keybinds
         self.key_buttons = {}
         i = 0
@@ -242,6 +255,13 @@ class App:
         self.settings_frame.destroy()
         self.state=self.prev_state
     
+    def tipscreen(self):
+        self.TipImg = Image.open("Assets\TipScreen.png")
+        self.TipImg = ImageTk.PhotoImage(self.TipImg)
+        self.tipscreen = Label(self.start_frame, image=self.TipImg)
+        self.tipscreen.place(relx=0.5, rely=0.5, anchor=CENTER)  
+        self.root.after(2500, lambda: self.tipscreen.destroy())  
+
 
     def game(self, event=None):
         # Check if restarting the game to clear any saved file
@@ -263,11 +283,15 @@ class App:
         self.game_frame = Frame(self.root, width=self.W, height=self.H)
         self.game_frame.pack(fill="both", expand=True)
 
-        # Load and initialise first game scene
+        # Load and initialise game scene
         self.gamebg_1 = ImageTk.PhotoImage(self.gamebg_1)
+        self.gamebg_2 = ImageTk.PhotoImage(Image.open("Assets\Gamebg_2.png").resize((self.W, self.H)))
+        self.gamebg_3 = ImageTk.PhotoImage(Image.open("Assets\Gamebg_3.png").resize((self.W, self.H)))
+        self.gamebg_4 = ImageTk.PhotoImage(Image.open("Assets\Gamebg_4.png").resize((self.W, self.H)))  
+        self.gamebg = [self.gamebg_1, self.gamebg_2, self.gamebg_3, self.gamebg_4]
         self.cn = Canvas(self.game_frame, width=self.W, height=self.H)
         self.cn.pack()
-        self.GameBG = self.cn.create_image(0,0,image=self.gamebg_1, anchor = NW)
+        self.GameBG = self.cn.create_image(0,0,image=self.gamebg_1, anchor = NW) 
 
         # Load pause option and game over menus and necessary button images
         self.OptionsImg = ImageTk.PhotoImage(Image.open("Assets\optionsmenu.png"))
@@ -289,7 +313,8 @@ class App:
         self.key_sequence = []
         self.WaveNum = 0
         self.Score = 0
-        self.scorepwave = 5
+        self.RelativeScore = 0
+        self.scorepwave = 2
         self.spawn_interval = 10000
         self.zombie_num = 0
         self.remaining_time = 0
@@ -310,6 +335,7 @@ class App:
         self.BossKActive = False
         self.Transparent = False
         self.cheaton = False
+        self.mob_cap = False
         
         self.cn.focus_set()
         self.cn.bind("<KeyPress>", self.action)
@@ -495,19 +521,27 @@ class App:
 
     def cheat_code(self):
         self.cheaton = True  # a vriable that i may use in the future to imoplement some more complex cheat code functionalities
-        if self.grav >=0.03:
+        if self.grav >=0.05:
+            self.grav -= 0.03
+        elif self.grav >=0.03:
             self.grav -= 0.01
-        if self.health < 100:
-            self.health += 10
+        if self.health + 30 < 100 and self.health < 100:
+            self.health += 30
+        elif self.health < 100:
+            self.health += 100 - self.health
             self.newhealthimg = ImageTk.PhotoImage(Image.open(f"Assets\HealthBar\{self.health}.png").resize((250, 14)))
             self.cn.itemconfig(self.HP, image = self.newhealthimg)
 
     def update_score(self):
         self.Score += 1
+        self.RelativeScore += 1
         #self.ScoreTxt.update() why doesn this work
         self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}") #self.ScoreTxt.config doesnt work cause its on a canvas and not a standard widget
-        if self.Score % self.scorepwave == 0 and self.Score != 0:
+        if self.RelativeScore % self.scorepwave == 0 and self.Score != 0:
+            print(self.Score, self.scorepwave, self.RelativeScore)
             self.WaveNum += 1
+            self.scorepwave +=1 
+            self.RelativeScore = 0
             self.root.after_cancel(self.spawn_timer)
             self.root.after_cancel(self.mobact_timer)
             self.Pause_button.destroy()
@@ -517,17 +551,17 @@ class App:
             
     def start_wave(self):
         self.cn.delete(self.WaveTxt)
-        
         self.Pause_button = Button(self.game_frame, image=self.PauseImg, command=self.pause, bd=0, highlightthickness=0)
         self.cn.create_window(20, 20, window=self.Pause_button)
-        self.cn.itemconfig(self.GameBG, image=self.gamebg_1)
+        self.cn.itemconfig(self.GameBG, image=self.gamebg[(self.WaveNum%4) - 1])
+        self.mob_cap = False
         self.spawn_mobs()
         self.action_mobs()
 
     def typewriter(self):
-        self.WaveMsg = f"Wave {self.WaveNum} is approaching...                                                      "
+        self.WaveMsg = f"Wave {self.WaveNum} is approaching...                                           "
         self.WaveTxt = self.cn.create_text(self.W//2, self.H*0.35, text='', font=self.InputFont, fill="black")
-        self.delta = 300
+        self.delta = 225
         delay = 0
         for i in range(len(self.WaveMsg)+1):
             s = self.WaveMsg[:i]
@@ -554,7 +588,12 @@ class App:
                 "health": self.health, 
                 "score": self.Score,
                 "jumping": self.Jumping,
-                "airspeed": self.y_speed if self.Jumping else 0
+                "airspeed": self.y_speed if self.Jumping else 0,
+                "wave": self.WaveNum,
+                "scoreperwave": self.scorepwave,
+                "RelativeScore": self.RelativeScore,
+                "zombie_num": self.zombie_num,
+                "mobcapreached": self.mob_cap
             },
             "zombies": [
                 {
@@ -584,14 +623,22 @@ class App:
             self.health = player_data["health"]
             self.newhealthimg = ImageTk.PhotoImage(Image.open(f"Assets\HealthBar\{self.health}.png").resize((250, 14)))  
             self.cn.itemconfig(self.HP, image = self.newhealthimg)
-            # Load in saved score
+            # Load in saved score and wavenumber
             self.Score = player_data["score"]
             self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}")
+            self.WaveNum = player_data["wave"]
             # To account for a save where player is in mid air 
             if player_data["jumping"]:
                 self.state="loaded"
                 self.y_speed=player_data["airspeed"]
                 self.Jump()
+            # Load in saved game background if wave number is not 0
+            if self.WaveNum != 0:
+                self.cn.itemconfig(self.GameBG, image=self.gamebg[(self.WaveNum%4) - 1])
+            self.zombie_num = player_data["zombie_num"]
+            self.mob_cap = player_data["mobcapreached"]
+            self.scorepwave = player_data["scoreperwave"]
+            self.RelativeScore = player_data["RelativeScore"]
 
             for zombie in self.Zombies: 
                 self.cn.delete(zombie.zombie_sprite)
@@ -759,7 +806,11 @@ class App:
 
     def spawn_mobs(self):
         # Spawn in zombies at random intervals and positions along the surface unless zombie cap for wave is reached
-        
+        if self.mob_cap:
+            self.mob_cap = False
+            return
+        print(self.zombie_num, self.scorepwave, self.mob_cap, 1)
+        self.mob_cap = False
         self.elapsed_spawn_time = time.time()
         x = random.choice([random.randint(0,int(0.25*float(self.W))),random.randint(int(0.75*float(self.W)),self.W)])  # gives random coordinate from either first quarter or fourth quarter of the map, may have to adjust for allowing only integers using randint if cannot move sprites to float/decimal pixels
         y = int(self.H * 0.82)
@@ -774,8 +825,12 @@ class App:
         self.spawn_timer=self.root.after(self.spawn_interval, self.spawn_mobs)
 
         if self.zombie_num >= self.scorepwave:
+            self.mob_cap = True
             self.zombie_num = 0
             self.root.after_cancel(self.spawn_timer)
+            print(self.zombie_num, self.scorepwave, self.mob_cap, 2)
+            return
+
 
     def take_damage(self):
         ctime = time.time()
@@ -901,8 +956,6 @@ class NPC(App):
         if self.Wave != 0:
             if self.Wave == 1:
                 self.health = 2
-            if self.Wave%5==0:
-                self.app.scorepwave += 5
             if self.Wave%3==0:
                 self.health += 1
         

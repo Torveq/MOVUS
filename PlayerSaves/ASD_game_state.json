@@ -1,1 +1,0 @@
-{"player": {"name": "ASD", "position": [210.0, 305.1], "health": 90, "score": 2, "jumping": false, "airspeed": 0}, "zombies": [{"position": [], "health": 0, "alive": false, "state": "dead"}], "game_state": "paused"}

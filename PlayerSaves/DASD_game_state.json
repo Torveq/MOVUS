@@ -1,1 +1,0 @@
-{"player": {"name": "DASD", "position": [260.0, 305.0], "health": 100, "score": 0, "jumping": false, "airspeed": 0}, "zombies": [{"position": [440.0, 305.0], "health": 1, "alive": true, "state": "walking_left"}], "game_state": "paused"}
