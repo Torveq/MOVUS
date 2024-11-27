@@ -2,7 +2,6 @@ from tkinter import *
 from PIL import Image, ImageTk
 from Leaderboard import *
 from idlelib.tooltip import Hovertip
-#from tkinter.tix import *
 import os
 import time
 import random
@@ -10,11 +9,7 @@ import math
 import json
 import tkinter.font
 import webbrowser
-#from tkinter import ttk
-'''try get window to resize and everything else does/scale along with it
-   addd functionality so that when on start menu an option is pressed for example settings the button is removed to avoid errors when settings button is pressed again
-   also try get the cursor to work
-   also add next to settings on start menu a how to play based on the craft pix ting just copy+paste'''
+
 class App:
     """
     Main application class for the MOVUS game, handling game initialization, 
@@ -35,12 +30,10 @@ class App:
         self.root = root
         self.root.title("MOVUS")
         self.root.iconbitmap("Assets\Icon.ico")
-        #self.root.resizable(True,True) doesnt work as intended, trying to upscale the entire thing to provide fullscreen option
         self.state = "initialising"
         self.prev_state = None
         self.BossKeyTransparent = 0
         self.saves_folder = "PlayerSaves"
-        self.root.bind("<Button-1>", self.debugging) # for debugging purposes
         self.root.wm_attributes('-transparentcolor', '#ab23ff')
         self.GameFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=16) # additional options weight, underline, overstrike, slant, etc
         self.InputFont = tkinter.font.Font(family="CyberpunkCraftpixPixel", size=67) # add other font incase character not accounted for in custom is used
@@ -54,8 +47,6 @@ class App:
             "bosskey": "b",
             "bosstype": 0
         }
-
-        #self.root.bind("<Configure>", self.resize)
 
         # Preloads all frames of animation (NPCWR is an abbreviation for NPC Walk Right BR is bite right AR is attack right etc..)
         self.leaderboard_bg = self.load_frames("Assets\Leaderboard_BG")
@@ -82,14 +73,6 @@ class App:
 
         self.start_menu()
 
-    """def debugging(self, event):
-        
-        # Debug method to print mouse click coordinates.
-        
-        Args:
-            event: Tkinter event containing mouse click information #
-        
-        print(f"Clicked at ({event.x}, {event.y})")"""
 
     def load_frames(self, folder):
         """
@@ -110,7 +93,7 @@ class App:
             elif filename.endswith(".jpg"):
                 image = Image.open(os.path.join(folder, filename))
                 frames.append(ImageTk.PhotoImage(image))
-        return frames  #could use .self instead but to be more modular ig
+        return frames  #could use .self instead but to be more modular
 
     def start_menu(self):
         """
@@ -209,10 +192,9 @@ class App:
         self.settingsImg = ImageTk.PhotoImage(self.settingsImg)
         label = Label(self.settings_frame, image=self.settingsImg)
         label.place(relx=0.5, rely=0.5, anchor=CENTER)
-        # Overlay other buttons with transparent rectangle to prevent pressing them
+        # Overlay other buttons with transparent rectangle to prevent pressing them once pressed
         self.block_b = Canvas(self.start_frame, width=900, height=60, bg="#ab23ff", bd=0, highlightthickness=0)
         self.block_b.place(x=0, y=540, anchor=NW)
-        #self.transrec = self.settings_frame.create_rectangle(0, 0, sW, sH, fill="#ab23ff", outline="#ab23ff")
         # Remapping keybinds
         self.key_buttons = {}
         i = 0
@@ -230,7 +212,6 @@ class App:
         # X button to leave settings menu
         self.xb_img = ImageTk.PhotoImage(Image.open(r"Assets\x_button.png").resize((31,31)))
         self.x_lb = Button(self.settings_frame, image=self.xb_img, command=self.CloseSettings, bd=0, highlightthickness=0, padx=0, pady=0)
-        #self.x_lb.bind("<Escape>", lambda event: self.x_lb.invoke())  # Bind Escape key to close settings button
         self.x_lb.place(x=260,y=9, anchor = NW)
 
         # Dropdown menu to select boss key functionality
@@ -421,7 +402,7 @@ class App:
         # Detect keys pressed and released for appropriate action
         self.Action = False
         self.Running = False
-        self.Jumping = False  # could be using a dictionary here instead
+        self.Jumping = False 
         self.Attacking = False
         self.RunAttacking = False
         self.BossKActive = False
@@ -432,7 +413,6 @@ class App:
         self.cn.focus_set()
         self.cn.bind("<KeyPress>", self.action)
         [key for key in [self.key_binds["attack"],self.key_binds["right"],self.key_binds["left"]] if self.cn.bind(f"<KeyRelease-{key}>", self.deaction)]
-        #self.cn.bind("<ButtonRelease-1>", self.deaction) later for when i implement attacking via left mouse button 
         
         # Load previous save(if available) of the player with the same username
         self.load_state()
@@ -445,7 +425,6 @@ class App:
         # Adding a Pause button
         self.PauseImg = ImageTk.PhotoImage(Image.open("Assets\Pause_Button.png").convert("RGBA").resize((25,25)))
         self.Pause_button = Button(self.game_frame, image=self.PauseImg, command=self.pause, bd=0, highlightthickness=0, padx=0, pady=0)
-        self.Pause_button.bind("<Escape>", lambda event: self.Pause_button.invoke())  # Bind Escape key to pause button
         self.cn.create_window(20,20, window = self.Pause_button)
 
     def action(self, event):
@@ -490,7 +469,7 @@ class App:
             self.cn.itemconfig(self.Player_Sprite, image = self.JumpImg) 
             self.Jump()
         
-        elif event.keysym == self.key_binds["attack"]:   #unexpected occurs when player holding down attack and then tries to run in either direction
+        elif event.keysym == self.key_binds["attack"]:   
             if self.Jumping or self.Attacking or self.RunAttacking:
                 return  # Prevents attacking if the player is jumping or already attacking
             self.Attack()
@@ -668,7 +647,6 @@ class App:
         """
         self.Score += 1
         self.RelativeScore += 1
-        #self.ScoreTxt.update() why doesn this work
         self.cn.itemconfig(self.ScoreTxt, text=f"Score: {self.Score}") #self.ScoreTxt.config doesnt work cause its on a canvas and not a standard widget
         if self.RelativeScore % self.scorepwave == 0 and self.Score != 0:
             print(self.Score, self.scorepwave, self.RelativeScore)
@@ -869,19 +847,13 @@ class App:
             
             if not self.state == "boss":
                 self.cn.unbind("<KeyPress>")
-                self.cn.unbind("<KeyRelease>") #need to fix this as still detected when paused
+                self.cn.unbind("<KeyRelease>") 
 
             self.state = "paused"
-            #[key for key in ["d", "a", "w"] if self.bg1_canvas.unbind(f"<KeyRelease-{key}>", self.deaction)]
             self.Pause_button.destroy()
             self.OptionsButton = Button(image = self.OptionsImg, borderwidth=0, highlightthickness=0, background="#ab23ff")
             self.OptionsButton.bind("<Button-1>", self.Optionclicked)
             self.OptionsMenu = self.cn.create_window(self.W // 2, int(self.H * 0.5), window = self.OptionsButton, anchor = CENTER)   
-
-            # trying to create another shape for the rubric but not working
-            #points = [40, 260, 165, 260, 150, 266, 50, 266]
-            #self.polygondesign = self.cn.create_polygon(points, outline = "blue", fill = "orange", width = 2)
-            #self.polygondesign.place(x=23, y=258, anchor = "NW")
             
             # Pausing mob related stuff calculating remainig time for the next mob spawn
             self.root.after_cancel(self.spawn_timer)
@@ -989,7 +961,7 @@ class App:
         self.animate() 
         self.Pause_button.destroy()
         self.deathmsg = self.cn.create_text(self.W//2, 230, text = self.dmsgs[random.randint(0, len(self.dmsgs)-1)], font=self.GameFont, anchor=CENTER, fill="#E11919", tags="death_msg")
-        #self.transp_bg = self.cn.create_rectangle(0, 270, self.W, 200, fill="#000000", outline="", alpha=0.5) #need to update python from 3.10 to update tkinter
+        
         for i in range(3):
             self.cn.create_rectangle(0, 260, self.W, 200, fill="#000000", outline="", stipple="gray50", tags="bg")  # Stipple pattern for transparency effect of text bg
         self.cn.tag_raise("death_msg", "bg") # to display text on top of transparent bg
@@ -1018,7 +990,7 @@ class App:
         zombie = NPC(self, self.cn, x, y, self.state, self.Score, self.WaveNum, self.npcwl, self.npcwr, self.npcrl, self.npcrr, self.npcal, self.npcar, self.npcbl, self.npcbr, self.npc1deadr, self.npc1deadl, self.npc2deadr, self.npc2deadl)
         self.Zombies.append(zombie)
         zombie.animate()
-        zombie.NextWave()   # does modifications to the zombie based on the wave number
+        zombie.NextWave()   # modifies the zombie based on the wave number
 
         self.zombie_num +=1
 
@@ -1051,7 +1023,7 @@ class App:
                 self.game_over()
                 return
             else:
-                self.newhealthimg = ImageTk.PhotoImage(Image.open(f"Assets\HealthBar\{self.health}.png").resize((250, 14)))  # if i dont attribute it to the class tkinter thing will do smth called garbage collecting idk why ask
+                self.newhealthimg = ImageTk.PhotoImage(Image.open(f"Assets\HealthBar\{self.health}.png").resize((250, 14)))  # if i dont attribute it to the class tkinter will be garbage collecting
                 self.cn.itemconfig(self.HP, image = self.newhealthimg)
                 self.last_hit_time = ctime
 
@@ -1111,7 +1083,6 @@ class App:
         """
         for widget in self.root.winfo_children():
             widget.destroy() 
-        #self.start_frame.pack_forget() might want to add this back when project gets too big 
 
 class NPC(App):
     """
@@ -1183,11 +1154,11 @@ class NPC(App):
             elif new_state == "attacking_right":
                 self.frames = self.attack_right
             elif new_state == "idle":
-                self.frames = None  # might raise errors 
+                self.frames = None  
             elif new_state == "dead":
                 if self.dx > 0:
                     self.frames = self.dead1_right
-                else:   #doesnt really show animation if moving towards player from east to west 
+                else:   
                     self.frames = self.dead1_left
             self.frame_index = 0 
     
@@ -1254,7 +1225,7 @@ class NPC(App):
         x = self.cn.coords(self.zombie_sprite)[0]
         self.dx = playerx - x
         if abs(self.dx) > 10: # Minimum distance from player to change direction to avoid endless switching if player close
-            direction = "walking_right" if self.dx > 0 else "walking_left"  #only accounts for walking atm
+            direction = "walking_right" if self.dx > 0 else "walking_left"  
             self.changestate(direction)
             step = min(self.mob_speed, self.dx) if self.dx>0 else max(-self.mob_speed, self.dx)
             self.cn.move(self.zombie_sprite, step, 0)
