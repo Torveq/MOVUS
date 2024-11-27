@@ -12,10 +12,26 @@ import tkinter.font
 import webbrowser
 #from tkinter import ttk
 '''try get window to resize and everything else does/scale along with it
+   addd functionality so that when on start menu an option is pressed for example settings the button is removed to avoid errors when settings button is pressed again
    also try get the cursor to work
    also add next to settings on start menu a how to play based on the craft pix ting just copy+paste'''
 class App:
+    """
+    Main application class for the MOVUS game, handling game initialization, 
+    menu management, game mechanics, and user interactions.
+    
+    Manages game states, sprite animations, player controls, 
+    and overall game flow across different screens and modes.
+    """
+
     def __init__(self, root):
+        """
+        Initialize the game application with root window, 
+        load assets, and set up initial game state.
+
+        Args:
+            root(tk.Tk): The main tkinter window for the application/game
+        """
         self.root = root
         self.root.title("MOVUS")
         self.root.iconbitmap("Assets\Icon.ico")
@@ -66,15 +82,25 @@ class App:
 
         self.start_menu()
 
-    def debugging(self, event):
-        # As the name suggests
-        print(f"Clicked at ({event.x}, {event.y})")
-
-    def resize(self):
-        pass
+    """def debugging(self, event):
+        
+        # Debug method to print mouse click coordinates.
+        
+        Args:
+            event: Tkinter event containing mouse click information #
+        
+        print(f"Clicked at ({event.x}, {event.y})")"""
 
     def load_frames(self, folder):
-        # Loads all frames for any one sprite animation
+        """
+        Load and resize animation frames from a specified folder.
+        
+        Args:
+            folder (str): Path to the folder containing sprite animation frames
+        
+        Returns:
+            list: List of PhotoImage objects representing animation frames
+        """
         self.frame_index = 0
         frames = []
         for filename in sorted(os.listdir(folder)):
@@ -87,6 +113,10 @@ class App:
         return frames  #could use .self instead but to be more modular ig
 
     def start_menu(self):
+        """
+        Create and display the game's start menu screen.
+        Sets up buttons for play, leaderboard, settings, and social links.
+        """
         # Reset screen
         self.clear_frame()
         self.state = "menu"
@@ -136,6 +166,10 @@ class App:
         self.soc_b.place(x=840, y=590, anchor=SW)
 
     def username_entry(self):
+        """
+        Provide an interface for the player to enter their username.
+        Restricts username length and format.
+        """
         self.play_button.config(command=self.game)
         self.NameImg=ImageTk.PhotoImage(Image.open(r"Assets\NameEntry.png").resize((643,74)))
         label = Label(self.start_frame, image=self.NameImg, bd=0, highlightthickness=0,padx=0, pady=0)
@@ -148,7 +182,10 @@ class App:
         self.user_input.trace("w", self.name_limit)
 
     def name_limit(self, *args):
-        # Ensures that entered username doesnt exceed 8 characters and capitalises the username
+        """
+        Limit and format the entered username.
+        Ensures username is capitalized and no longer than 8 characters.
+        """
         self.username = self.user_input.get().upper()
         if len(self.username) > 8:
             self.user_input.set(self.username[:8])
@@ -157,6 +194,10 @@ class App:
             self.username = "GUEST"
 
     def settings(self):
+        """
+        Open the game settings menu, allowing key binding remapping 
+        and boss key type selection.
+        """
         self.prev_state = self.state
         self.state="settings"
 
@@ -168,6 +209,10 @@ class App:
         self.settingsImg = ImageTk.PhotoImage(self.settingsImg)
         label = Label(self.settings_frame, image=self.settingsImg)
         label.place(relx=0.5, rely=0.5, anchor=CENTER)
+        # Overlay other buttons with transparent rectangle to prevent pressing them
+        self.block_b = Canvas(self.start_frame, width=900, height=60, bg="#ab23ff", bd=0, highlightthickness=0)
+        self.block_b.place(x=0, y=540, anchor=NW)
+        #self.transrec = self.settings_frame.create_rectangle(0, 0, sW, sH, fill="#ab23ff", outline="#ab23ff")
         # Remapping keybinds
         self.key_buttons = {}
         i = 0
@@ -185,7 +230,7 @@ class App:
         # X button to leave settings menu
         self.xb_img = ImageTk.PhotoImage(Image.open(r"Assets\x_button.png").resize((31,31)))
         self.x_lb = Button(self.settings_frame, image=self.xb_img, command=self.CloseSettings, bd=0, highlightthickness=0, padx=0, pady=0)
-        self.x_lb.bind("<Escape>", lambda event: self.x_lb.invoke())  # Bind Escape key to close settings button
+        #self.x_lb.bind("<Escape>", lambda event: self.x_lb.invoke())  # Bind Escape key to close settings button
         self.x_lb.place(x=260,y=9, anchor = NW)
 
         # Dropdown menu to select boss key functionality
@@ -199,7 +244,9 @@ class App:
         self.clicked.trace_add("write", self.UpdateBossKey)
 
     def UpdateBossKey(self, *args):
-        # Nested method checks which boss key has been selected
+        """
+        Update boss key settings based on user selection.
+        """
         if self.clicked.get()=="Boss-Key2:":
             self.BossKeyTransparent = 1
             self.save_settings()
@@ -208,11 +255,25 @@ class App:
             self.save_settings()
 
     def Remap(self, action):
+        """
+        Initiate key remapping for a specific game action.
+        
+        Args:
+            action (str): The game action to remap (e.g., 'attack', 'jump')
+        """
         button = self.key_buttons[action]
         button.focus_set()
         button.bind("<KeyPress>", lambda event: self.capture_key(event, action, button))
 
     def capture_key(self, event, action, button):
+        """
+        Capture and set a new key binding for a specific game action.
+        
+        Args:
+            event: Tkinter key press event
+            action (str): The game action being remapped
+            button (tk.Button): The button representing the action
+        """
         key = event.keysym 
         self.key_binds[action] = key  
         button.config(text=key) 
@@ -221,12 +282,25 @@ class App:
         button.unbind("<KeyPress>")  
 
     def warn_duplicate(self, current_action, key):
+        """
+        Check if a key binding is already used by another action.
+        
+        Args:
+            current_action (str): The current action being checked
+            key (str): The key to check for duplicates
+        
+        Returns:
+            bool: True if key is a duplicate, False otherwise
+        """
         for action, bound_key in self.key_binds.items():
             if current_action!=action and key==bound_key: 
                 return True
         return False
     
     def refresh_warnings(self):
+        """
+        Update button colors to indicate duplicate key bindings.
+        """
         for action, button in self.key_buttons.items():
             button.config(fg="green")
         for action1, key1 in self.key_binds.items():
@@ -236,14 +310,19 @@ class App:
                     self.key_buttons[action2].config(fg="red")
 
     def save_settings(self):
-        # saves key binds so that they aren't lost when the game is closed, its own function rather than joined with save_state to make keybinds global to all users and not just one
+        """
+        Save current key bindings and boss key settings to a JSON file.
+        """
+        # its own function rather than joined with save_state to make keybinds global to all users and not just one
         with open("settings.json", "w") as file:
             self.key_binds["bosstype"] = self.BossKeyTransparent
             print(self.BossKeyTransparent)
             json.dump(self.key_binds, file)
 
     def load_settings(self):
-        # loads keybinds from the json file
+        """
+        Load previously saved key bindings from a JSON file.
+        """
         if os.path.exists("settings.json"):
             with open("settings.json", "r") as file:
                 self.key_binds = json.load(file)
@@ -252,18 +331,31 @@ class App:
                 self.key_binds.pop("bosstype")
 
     def CloseSettings(self):
+        """
+        Close the settings menu and restore previous game state.
+        """
         self.settings_frame.destroy()
+        self.block_b.destroy()
         self.state=self.prev_state
     
     def tipscreen(self):
+        """
+        Display a temporary tip screen with game instructions/tips.
+        """
         self.TipImg = Image.open("Assets\TipScreen.png")
         self.TipImg = ImageTk.PhotoImage(self.TipImg)
         self.tipscreen = Label(self.start_frame, image=self.TipImg)
         self.tipscreen.place(relx=0.5, rely=0.5, anchor=CENTER)  
-        self.root.after(2500, lambda: self.tipscreen.destroy())  
+        self.block_b = Canvas(self.start_frame, width=900, height=60, bg="#ab23ff", bd=0, highlightthickness=0)
+        self.block_b.place(x=0, y=540, anchor=NW)
+        self.root.after(2500, lambda: (self.tipscreen.destroy(),self.block_b.destroy()))  
 
 
     def game(self, event=None):
+        """
+        Initialize and start the main game, loading necessary assets 
+        and setting up game state.
+        """
         # Check if restarting the game to clear any saved file
         if self.state == "restart":
             filename = f"PlayerSaves\{self.username}_game_state.json"
@@ -357,7 +449,13 @@ class App:
         self.cn.create_window(20,20, window = self.Pause_button)
 
     def action(self, event):
-        # Detect what key is pressed and do relevant action
+        """
+        Handle player input during gameplay, managing movement, 
+        jumping, attacking, and special keys.
+        
+        Args:
+            event: Tkinter key press event
+        """
         if self.state!="game":
             return
         self.x, self.y = self.cn.coords(self.Player_Sprite)
@@ -401,7 +499,12 @@ class App:
             self.BossKey()
 
     def deaction(self, event):
-        # Detects when a key is released and resets to original states
+        """
+        Reset player action states when keys are released.
+        
+        Args:
+            event: Tkinter key release event
+        """
         self.Action = False
         self.Running = False
         self.Attacking = False
@@ -410,6 +513,10 @@ class App:
         pass
     
     def Attack(self):
+        """
+        Manage player attack mechanics, including attack animations 
+        and damage calculation for nearby enemies.
+        """
         attack_range = 50
         closest_mob = None
         min_distance = float('inf')  # To track only the closest mob to the player
@@ -436,6 +543,10 @@ class App:
         self.animate()
 
     def Jump(self):
+        """
+        Implement player jumping mechanics with gravity and 
+        landing detection.
+        """
         if self.state=="loaded":  # to account for the case where a save is loaded where the player is mid air
             self.Jumping=True
             self.state="game"
@@ -452,6 +563,10 @@ class App:
             self.root.after(10, self.Jump)
 
     def BossKey(self):
+        """
+        Toggle boss key functionality, providing different 
+        screen overlay options when activated.
+        """
         if self.BossKActive:
             if self.Transparent==False:
                 self.TranspWin.destroy()
@@ -475,7 +590,10 @@ class App:
         self.BossKActive = True
 
     def animate(self):
-        # Animate the player sprite during action
+        """
+        Manage sprite animation frames for player movements 
+        and actions across different game states.
+        """
         if self.state=="end":
             if self.frame_index < len(self.running_frames):
                 self.cn.itemconfig(self.Player_Sprite, image=self.running_frames[self.frame_index])
@@ -504,7 +622,9 @@ class App:
         self.root.after(self.framespeed, self.animate)
 
     def bounds(self):
-        # Checks if Player Sprite is within the border of the screen/the boundary and doesn't allow further movement
+        """
+        Prevent player sprite from moving beyond screen boundaries.
+        """
         x = self.cn.coords(self.Player_Sprite)[0]
         if x <= 20 and self.dx < 0:
             self.dx = 0
@@ -512,6 +632,12 @@ class App:
             self.dx = 0
 
     def check_cheat_code(self, key):
+        """
+        Check for entered cheat code sequence.
+        
+        Args:
+            key (str): Most recently pressed key
+        """
         self.key_sequence.append(key)
         if self.key_sequence[-len(self.konami_sequence):] == self.konami_sequence:
             self.cheat_code()
@@ -520,6 +646,10 @@ class App:
             self.key_sequence.pop(0)
 
     def cheat_code(self):
+        """
+        Apply cheat code effects, such as health restoration 
+        and gravity modification.
+        """
         self.cheaton = True  # a vriable that i may use in the future to imoplement some more complex cheat code functionalities
         if self.grav >=0.05:
             self.grav -= 0.03
@@ -533,6 +663,9 @@ class App:
             self.cn.itemconfig(self.HP, image = self.newhealthimg)
 
     def update_score(self):
+        """
+        Update game score and manage wave progression.
+        """
         self.Score += 1
         self.RelativeScore += 1
         #self.ScoreTxt.update() why doesn this work
@@ -550,6 +683,9 @@ class App:
             self.root.after(self.delta*len(self.WaveMsg), self.start_wave)
             
     def start_wave(self):
+        """
+        Start a new enemy wave after wave break screen.
+        """
         self.cn.delete(self.WaveTxt)
         self.Pause_button = Button(self.game_frame, image=self.PauseImg, command=self.pause, bd=0, highlightthickness=0)
         self.cn.create_window(20, 20, window=self.Pause_button)
@@ -559,6 +695,9 @@ class App:
         self.action_mobs()
 
     def typewriter(self):
+        """
+        Create a typewriter-like text effect for wave announcement.
+        """
         self.WaveMsg = f"Wave {self.WaveNum} is approaching...                                           "
         self.WaveTxt = self.cn.create_text(self.W//2, self.H*0.35, text='', font=self.InputFont, fill="black")
         self.delta = 225
@@ -571,10 +710,22 @@ class App:
 
 
     def reset_sprite(self):
-        # Resets the player sprite to the idle position
+        """
+        Reset player sprite to idle state based on last movement direction.
+        """
         self.cn.itemconfig(self.Player_Sprite, image=self.IdleR if self.dx>0 else self.IdleL)
 
     def save_state(self):
+        """
+        Saves the current game state to a JSON file.
+        
+        This method captures the current game state, including:
+        - Player information (position, health, score, wave number)
+        - Zombie information (position, health, state)
+        - Removes dead zombies from the list before saving
+        
+        The state is saved in a JSON file specific to the current player.
+        """
         self.state = "paused"
         self.state_file = os.path.join(self.saves_folder, f"{self.username}_game_state.json")
         for zombie in self.Zombies:
@@ -611,6 +762,18 @@ class App:
             json.dump(self.game_data, file)
 
     def load_state(self):
+        """
+        Loads a previously saved game state from a JSON file.
+        
+        If a saved game state exists for the current player:
+        - Restores player position, health, score, and wave number
+        - Recreates zombies with their saved positions and states
+        
+        If no saved state exists:
+        - Resets player health to 100
+        - Resets score to 0
+        - Clears existing zombies
+        """
         if os.path.exists(f"PlayerSaves\{self.username}_game_state.json"):
             self.state_file = f"PlayerSaves\{self.username}_game_state.json"
             with open(self.state_file, "r") as file:
@@ -664,6 +827,9 @@ class App:
             self.Zombies.clear()
 
     def leaderboard(self):
+        """
+        Displays the game's leaderboard screen.
+        """
         self.prev_state = self.state
         self.state="lb"
         self.running_frames = self.leaderboard_bg
@@ -685,11 +851,19 @@ class App:
         self.animate()
 
     def CloseLB(self):
+        """
+        Close the leaderboard screen and return to the previous game state.
+        """
         self.lb_frame.destroy()
         self.state=self.prev_state
 
     def pause(self):
-        # Pauses the game and displays an option menu
+        """
+        Pause the game and display options menu.
+
+        Stops game mechanics, saves current state, unbinds key events, 
+        and prepares the game for player interaction in paused mode.
+        """
         if self.state == "game":
             self.save_state()
             
@@ -717,7 +891,9 @@ class App:
             self.root.after_cancel(self.mobact_timer)         
 
     def resume(self):
-        # Resume game
+        """
+        Resumes the game from a paused state reversing all actions done in the pause method.
+        """
         if self.state == "paused":
             self.load_state()
             self.state = "game"
@@ -743,7 +919,16 @@ class App:
                 self.action_mobs()
 
     def Optionclicked(self, event):
-        # Determines what button on the options menu has been pressed
+        """
+        Handle user interactions with options menu buttons.
+
+        Processes button clicks in different game states (paused or end), 
+        triggering corresponding actions like resuming, restarting, 
+        viewing leaderboard, or returning to start menu.
+
+        Args:
+            event: Tkinter mouse click event with x and y coordinates
+        """
         x, y = event.x, event.y
         if self.state == "paused":
             # X button dimensions x1=405 y1=56 x2=425 y2=77 then for resume, restart, stats, settings, and quit
@@ -782,9 +967,19 @@ class App:
                         self.game()
 
     def game_over(self):
-        # Ends the game sets all zombies to idle position and stops them and plays death animation of player and loads game over screen
+        """
+        Initiate game over sequence and final screen.
+
+        Performs multiple actions to conclude the game:
+        - Saves player's final score to leaderboard
+        - Stops zombie movement and animations and set them to idle frames
+        - Plays player death animation
+        - Displays a randomly selected death message(from terraria)
+        - Creates game over menu with restart and quit options
+        - Cancels active game timers
+        """
         save_score(self.username, self.Score) # for leaderboard
-        self.dmsgs = [f"{self.username} was eviscerated.", f"{self.username} was brutally dissected.", f"{self.username} had both kidneys stolen.", f"{self.username}'s body was donated to science.", f"{self.username} received a forced amputation.", f"{self.username} was voluntold to donate blood.", f"{self.username} suffered from a tragic lobotomy."]
+        self.dmsgs = [f"{self.username} was eviscerated.", f"{self.username} was brutally dissected.", f"{self.username} had both kidneys stolen.", f"{self.username}'s body was donated to science.", f"{self.username} received a forced amputation.", f"{self.username} was voluntold to donate blood.", f"{self.username} suffered from a tragic lobotomy.", f"{self.username}'s body was donated to science."]
         for zombie in self.Zombies:
             zombie.changestate("idle")
         self.running_frames = self.dead_right if self.dx>0 else self.dead_left
@@ -805,7 +1000,13 @@ class App:
         
 
     def spawn_mobs(self):
-        # Spawn in zombies at random intervals and positions along the surface unless zombie cap for wave is reached
+        """
+        Spawn zombies at random intervals and positions.
+
+        Controls zombie spawning based on current wave, zombie cap, 
+        and predefined spawn intervals. Adjusts zombie difficulty 
+        and game progression.
+        """
         if self.mob_cap:
             self.mob_cap = False
             return
@@ -833,6 +1034,13 @@ class App:
 
 
     def take_damage(self):
+        """
+        Handle player damage mechanics.
+
+        Reduces player health, updates health bar, displays hurt 
+        sprite, and triggers game over when health reaches zero. 
+        Implements a cooldown between damage events.
+        """
         ctime = time.time()
         if ctime - self.last_hit_time >= 2:  # 2 second cooldown for damaging the player
             self.health -= 10
@@ -848,7 +1056,12 @@ class App:
                 self.last_hit_time = ctime
 
     def action_mobs(self):
-        # Updates the mobs to move towards the player and if in range inflict damage
+        """
+        Manage zombie behavior and movement during gameplay; attack player if in range.
+
+        Continuously updates zombie positions, checks for player 
+        collisions, and controls zombie movement and attack states.
+        """
         x,y = self.cn.coords(self.Player_Sprite)
         for zombie in self.Zombies:
             if zombie.alive:
@@ -864,7 +1077,15 @@ class App:
         self.mobact_timer=self.root.after(50, self.action_mobs)
 
     def mob_collisions(self, dx):
-        # Adds collision checks between player and NPCs so that player can not run through them but can jump over them
+        """
+        Detect and prevent player movement through zombie, providing collision feedback.
+
+        Args:
+            dx (float): Horizontal player movement distance
+
+        Returns:
+            bool: True if movement is blocked, False if movement is allowed
+        """
         px, py = self.cn.coords(self.Player_Sprite)
         next_px = px + dx
 
@@ -882,14 +1103,31 @@ class App:
 
 
     def clear_frame(self):
-        # Reset and remove all frames and widgets
+        """
+        Remove all widgets from the game window.
+
+        Destroys all child widgets, effectively resetting the 
+        game screen for new game initialization or state changes.
+        """
         for widget in self.root.winfo_children():
             widget.destroy() 
         #self.start_frame.pack_forget() might want to add this back when project gets too big 
 
 class NPC(App):
+    """
+    Initialize a zombie (NPC) with game-specific attributes.
+
+    Sets up zombie's initial state, animations, movement capabilities, 
+    and links to the main game application.
+    """
+
     def __init__(self, app, cn, x, y, PlayerState, PlayerScore, WaveNumb, NPCWL, NPCWR, NPCRL, NPCRR, NPCAL, NPCAR, NPCBL, NPCBR, NPC1deadR, NPC1deadL, NPC2deadR, NPC2deadL): #placeholder defaults to prevent errors for now for when mob 2 is to be added to the game
-        
+        """
+        Initialize a zombie (NPC) with game-specific attributes.
+
+        Sets up zombie's initial state, animations, movement capabilities, 
+        and links to the main game application.
+        """
         self.app =app
         self.cn = cn
         self.Pstate = PlayerState
@@ -927,7 +1165,9 @@ class NPC(App):
         self.animate()
 
     def changestate(self, new_state):
-        # Change the state of the NPC
+        """
+        Change the zombie's current state and animation frames based on game context.
+        """
         if new_state != self.state:
             self.state = new_state
             if new_state == "walking_left":
@@ -952,7 +1192,12 @@ class NPC(App):
             self.frame_index = 0 
     
     def NextWave(self):
-        # To increase difficulty from wave to wave
+        """
+        Increase zombie difficulty as game progresses.
+
+        Incrementally enhances zombie attributes like health, 
+        speed, and spawn mechanics to maintain game challenge.
+        """
         if self.Wave != 0:
             if self.Wave == 1:
                 self.health = 2
@@ -964,7 +1209,12 @@ class NPC(App):
         self.app.spawn_interval -= 500 if self.app.spawn_interval>2000 else 0
 
     def animate(self):
-        # Ques appropriate animation for the NPC
+        """
+        Manage zombie sprite animation frames.
+
+        Cycles through animation frames, updates sprite image, and 
+        handles special cases like death animation and sprite deletion.
+        """
         if self.frames is None:
             self.cn.itemconfig(self.zombie_sprite, image=self.IdleZ1)
             return
@@ -979,15 +1229,26 @@ class NPC(App):
         self.mobanimate = self.cn.after(150, self.animate)
 
     def pauseani(self):
+        """
+        Pause zombie animation during game pause.
+        """
         self.cn.after_cancel(self.mobanimate)
         self.Animating = False
 
     def resumeani(self):
+        """
+        Resume zombie animation after game is unpaused.
+        """
         self.Animating = True
         self.animate()
             
     def moveto(self, playerx):
-        # Moves NPC towards players current coordinates if not already attacking
+        """
+        Move zombie towards player's position.
+
+        Controls zombie movement direction and speed, updating 
+        state and position relative to player's location.
+        """
         if self.state.startswith("attacking"):
             return
         x = self.cn.coords(self.zombie_sprite)[0]
@@ -999,7 +1260,17 @@ class NPC(App):
             self.cn.move(self.zombie_sprite, step, 0)
 
     def collisions(self, playerx, playery, attack_range = 30):
-        # Checks if mob is close enough to inflict damage unto the player
+        """
+        Determine if zombie is in range to attack player and attack if within the range.
+
+        Args:
+            playerx (int): Player's x-coordinate
+            playery (int): Player's y-coordinate
+            attack_range (int, optional): Maximum distance for attack. Defaults to 30.
+
+        Returns:
+            bool: True if zombie can attack, False otherwise
+        """
         x, y = self.cn.coords(self.zombie_sprite)
         if abs(playerx - x) < attack_range and abs(playery - y) < attack_range - 10:
             if not self.state.startswith("attacking"):
@@ -1009,7 +1280,11 @@ class NPC(App):
             return False
         
     def take_damage(self, damage):
-        # Reduces health of mob and checks if mob is dead or not
+        """
+        Process damage inflicted on the zombie.
+
+        Reduces zombie health, triggers death sequence and animation if no HP left, and updates game score accordingly.
+        """
         self.health -= damage
         if self.health <= 0:
             self.alive = False

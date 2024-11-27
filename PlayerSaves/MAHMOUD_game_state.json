@@ -1,0 +1,1 @@
+{"player": {"name": "MAHMOUD", "position": [290.0, 306.77000000000277], "health": 20, "score": 5, "jumping": false, "airspeed": 0, "wave": 1, "zombie_num": 0, "mobcapreached": false}, "zombies": [{"position": [], "health": 0, "alive": false, "state": "dead"}, {"position": [], "health": 0, "alive": false, "state": "dead"}], "game_state": "paused"}
