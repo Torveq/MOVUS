@@ -34,6 +34,7 @@ class App:
         self.root.iconbitmap("Assets\Icon.ico")
         self.state = "initialising"
         self.prev_state = None
+        self.running_frames = []
         self.BossKeyTransparent = 0
         self.saves_folder = "PlayerSaves"
         self.root.wm_attributes("-transparentcolor", "#ab23ff")
