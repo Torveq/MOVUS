@@ -289,7 +289,7 @@ class App:
         label.place(relx=0.5, rely=0.5, anchor=CENTER)
         # Overlay other buttons with transparent rectangle
         # (to prevent pressing them once pressed)
-        if self.state == "menu":
+        if self.prev_state == "menu":
             self.block_b = Canvas(
                 self.start_frame,
                 width=900,
@@ -466,7 +466,7 @@ class App:
         Close the settings menu and restore previous game state.
         """
         self.settings_frame.destroy()
-        if self.state == "menu":
+        if self.prev_state == "menu":
             self.block_b.destroy()
         self.state = self.prev_state
 
@@ -946,6 +946,12 @@ class App:
             self.grav -= 0.01
         if self.health + 30 < 100 and self.health < 100:
             self.health += 30
+            self.newhealthimg = ImageTk.PhotoImage(
+                Image.open(
+                    f"Assets\HealthBar\{self.health}.png"
+                ).resize((250, 14))
+            )
+            self.cn.itemconfig(self.HP, image=self.newhealthimg)
         elif self.health < 100:
             self.health += 100 - self.health
             self.newhealthimg = ImageTk.PhotoImage(
@@ -1187,6 +1193,7 @@ class App:
         """
         self.prev_state = self.state
         self.state = "lb"
+        self.prev_running_frames = self.running_frames
         self.running_frames = self.leaderboard_bg
 
         # Make leaderboard initial frame background
@@ -1235,6 +1242,7 @@ class App:
         """
         self.lb_frame.destroy()
         self.state = self.prev_state
+        self.running_frames = self.prev_running_frames
 
     def pause(self):
         """
