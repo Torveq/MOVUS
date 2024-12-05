@@ -29,8 +29,7 @@ def save_score(player_name, score):
                 score,
                 scores[p_exists_i][2],
             )
-            print(scores)
-            print(p_exists_i)
+
     else:
         color = f"#{random.randint(0, 255):02x}"
         color += f"{random.randint(0, 255):02x}"

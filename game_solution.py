@@ -947,20 +947,15 @@ class App:
             self.grav -= 0.01
         if self.health + 30 < 100 and self.health < 100:
             self.health += 30
-            self.newhealthimg = ImageTk.PhotoImage(
-                Image.open(
-                    f"Assets\HealthBar\{self.health}.png"
-                ).resize((250, 14))
-            )
             self.cn.itemconfig(self.HP, image=self.newhealthimg)
         elif self.health < 100:
             self.health += 100 - self.health
-            self.newhealthimg = ImageTk.PhotoImage(
-                Image.open(
-                    f"Assets\HealthBar\{self.health}.png"
-                ).resize((250, 14))
-            )
-            self.cn.itemconfig(self.HP, image=self.newhealthimg)
+        self.newhealthimg = ImageTk.PhotoImage(
+            Image.open(
+                f"Assets\HealthBar\{self.health}.png"
+            ).resize((250, 14))
+        )
+        self.cn.itemconfig(self.HP, image=self.newhealthimg)
 
     def update_score(self):
         """
